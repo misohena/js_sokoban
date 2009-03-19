@@ -30,7 +30,7 @@ VecMathImpl = {
     // Vec3 op(Vec3)
     normalizeVec3: function(result, arg)
     {
-	var len = lengthVec3(v);
+	var len = VecMathImpl.lengthVec3(arg);
 	result[0] = arg[0] / len;
 	result[1] = arg[1] / len;
 	result[2] = arg[2] / len;
@@ -131,13 +131,13 @@ VecMathImpl = {
     {
 	if(result === lhs || result === rhs){
 	    var tmp = new Array(16);
-	    mulMat44Mat44_Impl(tmp, lhs, rhs);
+	    VecMathImpl.mulMat44Mat44_Impl(tmp, lhs, rhs);
 	    for(var i = 0; i < 16; ++i){
 		result[i] = tmp[i];
 	    }
 	}
 	else{
-	    mulMat44Mat44_Impl(result, lhs, rhs);
+	    VecMathImpl.mulMat44Mat44_Impl(result, lhs, rhs);
 	}
     },    
 
@@ -214,7 +214,7 @@ VecMathImpl = {
 	VecMathImpl.crossVec3Vec3(xaxis, up, zaxis);
 	VecMathImpl.normalizeVec3(xaxis, xaxis);
 	var yaxis = new Array(3);
-	VecMathImpl.crossVec3Vec3(zaxis, xaxis);
+	VecMathImpl.crossVec3Vec3(yaxis, zaxis, xaxis);
 
 	result[0]  = xaxis[0]; result[1]  = yaxis[0]; result[2]  = zaxis[0]; result[3]  = 0;
 	result[4]  = xaxis[1]; result[5]  = yaxis[1]; result[6]  = zaxis[1]; result[7]  = 0;
@@ -254,8 +254,8 @@ Vec3.prototype = {
     set: function()
     {
         switch(arguments.length){
-        case 1: VecMath.copy(this, arguments[0], 3); break;
-        default: VecMath.copy(this, arguments, 3); break;
+        case 1: VecMathImpl.copy(this, arguments[0], 3); break;
+        default: VecMathImpl.copy(this, arguments, 3); break;
         }
     },
 
@@ -281,6 +281,12 @@ Vec3.prototype = {
 	VecMathImpl.normalizeVec3(this, src ? src : this);
     },
 
+    mul: function(lhs, rhs)
+    {
+	///@todo もっと他のパターンも実装する。
+	VecMathImpl.mulVec3Mat44(this, lhs, rhs);
+    },
+
     toString: function()
     {
         return "Vec3(" + this[0] + "," + this[1] + "," + this[2] + ")";
@@ -302,6 +308,20 @@ function Mat44()
 }
 
 Mat44.prototype = {
+    mul: function(lhs, rhs)
+    {
+	///@todo もっと他のパターンも実装する。
+	VecMathImpl.mulMat44Mat44(this, lhs, rhs);
+    },
+    toString: function()
+    {
+        return "Mat44("
+	    + this[0] + "," + this[1] + "," + this[2] + "," + this[3] + ",\n"
+	    + this[4] + "," + this[5] + "," + this[6] + "," + this[7] + ",\n"
+	    + this[8] + "," + this[9] + "," + this[10] + "," + this[11] + ",\n"
+	    + this[12] + "," + this[13] + "," + this[14] + "," + this[15] + ",\n"
+	    + ")";
+    }
 }
 
 Mat44.newIdentity = function()
@@ -313,14 +333,22 @@ Mat44.newIdentity = function()
 
 Mat44.newZero = function()
 {
-///@todo うーん、Mat44が未初期化なら良いのにナァ。
+    ///@todo うーん、Mat44が未初期化なら良いのにナァ。
     var m = new Mat44();
+    return m;
+}
+
+Mat44.newLookAtLH = function(pos, target, up)
+{
+    var m = new Mat44();
+    VecMathImpl.setMat44LookAtLH(m, pos, target, up);
+    return m;
 }
 
 
+/*
 var v = new Vec3(5,6,7);
 alert(v);
 var v2 = new Vec3(1);
 alert(v2);
-
-
+*/

@@ -39,8 +39,8 @@ Maze.prototype = {
 
     cellAt: function(x, y)
     {
-	return (y >= 0 && y < cells.length && x >= 0 && x < cells[y].length)
-	    ? cells[y][x] : Cell.OUTSIDE;
+	return (y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[y].length)
+	    ? this.cells[y][x] : Cell.OUTSIDE;
     },
 
 };
@@ -113,27 +113,130 @@ function main()
 {
     var canvas = document.getElementById("canvas");
     if(!canvas.getContext){
+	alert("Undefined canvas.getContext.");
         return;
     }
-/*
+    canvas.style.cssText = "border: 1px solid;"
+    var ctx = canvas.getContext("2d");
+
     var maze = loadMaze(dataMazeTest);
-    outputMazeText(maze);
-*/
+    //outputMazeText(maze);
+
+    var WALL_HEIGHT = 1.2;
 
     var vertices = new Array();
+    var transformed = new Array();
     var surfaces = new Array();
 
-/*
+    var imWall = new Image();
+    imWall.src = "img/brick.png";
+    var imFloor = new Image();
+    imFloor.src = "img/oak.png";
+
+    var idx;
     for(var y = 0; y < maze.height; ++y){
 	for(var x = 0; x < maze.width; ++x){
 	    switch(maze.cellAt(x, y)){
-	    case '#':
-		makeSquare(x, -y..................
-			   break;
+	    case Cell.WALL:
+		idx = vertices.length/3;
+		vertices.push(x, WALL_HEIGHT, -y);
+		vertices.push(x, WALL_HEIGHT, -y-1);
+		vertices.push(x+1, WALL_HEIGHT, -y-1);
+		vertices.push(x+1, WALL_HEIGHT, -y);
+		vertices.push(x, 0, -y);
+		vertices.push(x, 0, -y-1);
+		vertices.push(x+1, 0, -y-1);
+		vertices.push(x+1, 0, -y);
+
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+0, idx+1, idx+2, idx+3],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imWall, "#000"));
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+0, idx+4, idx+5, idx+1],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imWall, "#000"));
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+1, idx+5, idx+6, idx+2],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imWall, "#000"));
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+2, idx+6, idx+7, idx+3],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imWall, "#000"));
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+3, idx+7, idx+4, idx+0],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imWall, "#000"));
+		break;
+	    case Cell.FLOOR:
+		idx = vertices.length/3;
+		vertices.push(x, 0, -y);
+		vertices.push(x, 0, -y-1);
+		vertices.push(x+1, 0, -y-1);
+		vertices.push(x+1, 0, -y);
+
+		surfaces.push(new Surface(
+		    transformed,
+		    [idx+0, idx+1, idx+2, idx+3],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imFloor, "#000"));
+		break;
 	    }
         }
     }
-*/
-    //drawSurface(
+
+    //var angle = Math.PI/2;
+    var angle = Math.PI/2*2.3;
+
+    var onTime = function()
+    {
+	var centerX = maze.width/2;
+	var centerY = maze.height/2;
+	var eyeX = centerX + Math.cos(angle) * 20;
+	var eyeY = centerY + Math.sin(angle) * 20;
+
+	angle += Math.PI/180*5;
+
+	var matView = Mat44.newLookAtLH(new Vec3(eyeX,20,-eyeY), new Vec3(centerX,0,-centerY), new Vec3(0,1,0));
+	var matScreen = new Mat44(
+	    30,0,0,0,
+	    0,-30,0,0,
+	    0,0,1,0,
+	    320,240,0,1);
+	var mat = new Mat44();
+	mat.mul(matView, matScreen);
+
+	// Transform vertices.
+	var vcount = vertices.length / 3;
+	var src = new Vec3();
+	var dst = new Vec3();
+	for(var vi = 0; vi < vcount; ++vi){
+	    src.set(vertices[vi*3+0], vertices[vi*3+1], vertices[vi*3+2]);
+	    dst.mul(src, mat);
+	    transformed[vi*3+0] = dst[0];
+	    transformed[vi*3+1] = dst[1];
+	    transformed[vi*3+2] = dst[2];
+	}
+
+	// Sort surfaces by z.
+	surfaces.sort(function(lhs, rhs) { return rhs.getSurfaceZ() - lhs.getSurfaceZ();});
+
+	// Draw surfaces.
+	ctx.clearRect(0,0,640,480);
+	for(var si = 0; si < surfaces.length; ++si){
+	    drawSurface(ctx, surfaces[si]);
+	}
+    };
+
+    setInterval(onTime, 100);
+    //setTimeout(onTime, 100);
 
 }
+
+

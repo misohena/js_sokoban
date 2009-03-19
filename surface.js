@@ -39,12 +39,22 @@
 function drawSurface(ctx, surface)
 {
     var tex = surface.getTexture();
+
     var x1 = surface.getTransformedX(0);
     var y1 = surface.getTransformedY(0);
     var x2 = surface.getTransformedX(1);
     var y2 = surface.getTransformedY(1);
     var x3 = surface.getTransformedX(2);
     var y3 = surface.getTransformedY(2);
+
+    var x21 = x2 - x1;
+    var x32 = x3 - x2;
+    var y21 = y2 - y1;
+    var y32 = y3 - y2;
+    if(x21*y32 - y21*x32 >= 0){
+	return;
+    }
+
 
     var u1 = surface.getTexX(0)*tex.width;
     var v1 = surface.getTexY(0)*tex.height;
@@ -54,6 +64,9 @@ function drawSurface(ctx, surface)
     var v3 = surface.getTexY(2)*tex.height;
 
     var det = (u3-u2)*(v1-v2) - (u1-u2)*(v3-v2);
+    if(Math.abs(det) <= 1e-6){
+	return;
+    }
 
     var a = (x1*(v2-v3) + x2*(v3-v1) + x3*(v1-v2)) / det;
     var b = (y1*(v2-v3) + y2*(v3-v1) + y3*(v1-v2)) / det;
@@ -62,28 +75,72 @@ function drawSurface(ctx, surface)
     var e = (x1*(u2*v3 - u3*v2) + x2*(u3*v1 - u1*v3) + x3*(u1*v2 - u2*v1)) / det;
     var f = (y1*(u2*v3 - u3*v2) + y2*(u3*v1 - u1*v3) + y3*(u1*v2 - u2*v1)) / det;
 
-    ctx.beginPath();
-    ctx.moveTo(surface.getTransformedX(0), surface.getTransformedY(0));
-    for(var vi = 1; vi < surface.countVertex(); ++vi){
-	ctx.lineTo(surface.getTransformedX(vi), surface.getTransformedY(vi));
-    }
-    ctx.clip();
-
     ctx.save();
+
+    if(surface.isNeedToClip()){
+	ctx.beginPath();
+	ctx.moveTo(surface.getTransformedX(0), surface.getTransformedY(0));
+	for(var vi = 1; vi < surface.countVertex(); ++vi){
+	    ctx.lineTo(surface.getTransformedX(vi), surface.getTransformedY(vi));
+	}
+	ctx.clip();
+    }
+
     ctx.setTransform(a,b,c,d,e,f);
     ctx.drawImage(tex, 0, 0);
-    ctx.restore();
+    ctx.setTransform(1,0,0,1,0,0);
 
-    ctx.beginPath();
-    ctx.moveTo(surface.getTransformedX(0), surface.getTransformedY(0));
-    for(var vi = 1; vi < surface.countVertex(); ++vi){
-	ctx.lineTo(surface.getTransformedX(vi), surface.getTransformedY(vi));
+    var lineStyle = surface.getLineStyle();
+    if(lineStyle){
+	ctx.strokeStyle = lineStyle;
+	ctx.beginPath();
+	ctx.moveTo(surface.getTransformedX(0), surface.getTransformedY(0));
+	for(var vi = 1; vi < surface.countVertex(); ++vi){
+	    ctx.lineTo(surface.getTransformedX(vi), surface.getTransformedY(vi));
+	}
+	ctx.closePath();
+	ctx.stroke();
     }
-    ctx.stroke();
+    ctx.restore();
 }
 
 
 
+function Surface(transformed, indices, texcoord, texture, lineStyle)
+{
+    this.transformed = transformed;
+    this.indices = indices;
+    this.texcoord = texcoord;
+    this.texture = texture;
+    this.lineStyle = lineStyle;
+}
+Surface.prototype = {
+    countVertex: function(){return this.indices.length;},
+    getTexture: function(){return this.texture;},
+    getTransformedX: function(index){return this.transformed[this.indices[index]*3+0];},
+    getTransformedY: function(index){return this.transformed[this.indices[index]*3+1];},
+    getTransformedZ: function(index){return this.transformed[this.indices[index]*3+2];},
+    getTexX: function(index){return this.texcoord[index*2+0];},
+    getTexY: function(index){return this.texcoord[index*2+1];},
+    getLineStyle: function(index) { return this.lineStyle;},
+
+    getSurfaceZ: function()
+    {
+	return Math.max(this.getTransformedZ(0), this.getTransformedZ(1), this.getTransformedZ(2));
+    },
+    isNeedToClip: function()
+    {
+	return !(this.texcoord.length == 8
+		 && this.texcoord[0] == 0
+		 && this.texcoord[1] == 0
+		 && this.texcoord[2] == 0
+		 && this.texcoord[3] == 1
+		 && this.texcoord[4] == 1
+		 && this.texcoord[5] == 1
+		 && this.texcoord[6] == 1
+		 && this.texcoord[7] == 0);///@todo ‰ñ“]Œ`‚àl—¶‚·‚éB
+    }
+};
 
 
 /*
