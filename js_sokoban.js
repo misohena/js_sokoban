@@ -122,7 +122,7 @@ function main()
     var maze = loadMaze(dataMazeTest);
     //outputMazeText(maze);
 
-    var WALL_HEIGHT = 1.2;
+    var WALL_HEIGHT = 1.0;
 
     var vertices = new Array();
     var transformed = new Array();
@@ -191,8 +191,7 @@ function main()
         }
     }
 
-    //var angle = Math.PI/2;
-    var angle = Math.PI/2*2.3;
+    var angle = Math.PI/2;
 
     var onTime = function()
     {
@@ -204,13 +203,20 @@ function main()
 	angle += Math.PI/180*5;
 
 	var matView = Mat44.newLookAtLH(new Vec3(eyeX,20,-eyeY), new Vec3(centerX,0,-centerY), new Vec3(0,1,0));
-	var matScreen = new Mat44(
-	    30,0,0,0,
-	    0,-30,0,0,
+	var matProj = new Mat44(
+	    2/15,0,0,0,
+	    0,2/(15*canvas.height/canvas.width),0,0,
 	    0,0,1,0,
-	    320,240,0,1);
+	    0,0,0,1
+	);
+	var matScreen = new Mat44(
+	    canvas.width/2,0,0,0,
+	    0,-canvas.height/2,0,0,
+	    0,0,1,0,
+	    canvas.width/2,canvas.height/2,0,1);
 	var mat = new Mat44();
-	mat.mul(matView, matScreen);
+	mat.mul(matView, matProj);
+	mat.mul(mat, matScreen);
 
 	// Transform vertices.
 	var vcount = vertices.length / 3;
@@ -224,13 +230,22 @@ function main()
 	    transformed[vi*3+2] = dst[2];
 	}
 
+	// Cull backfacing surfaces.
+	var frontFaces = new Array();
+	for(var si = 0; si < surfaces.length; ++si){
+	    if(surfaces[si].isFrontFace()){
+		frontFaces.push(surfaces[si]);
+	    }
+	}
+
 	// Sort surfaces by z.
-	surfaces.sort(function(lhs, rhs) { return rhs.getSurfaceZ() - lhs.getSurfaceZ();});
+	frontFaces.sort(function(lhs, rhs) { return rhs.getMostFrontZ() - lhs.getMostFrontZ();});
 
 	// Draw surfaces.
-	ctx.clearRect(0,0,640,480);
-	for(var si = 0; si < surfaces.length; ++si){
-	    drawSurface(ctx, surfaces[si]);
+	ctx.fillStyle = "#cca";
+	ctx.fillRect(0,0,640,480);
+	for(var si = 0; si < frontFaces.length; ++si){
+	    drawSurface(ctx, frontFaces[si]);
 	}
     };
 
@@ -238,5 +253,4 @@ function main()
     //setTimeout(onTime, 100);
 
 }
-
 

@@ -47,15 +47,6 @@ function drawSurface(ctx, surface)
     var x3 = surface.getTransformedX(2);
     var y3 = surface.getTransformedY(2);
 
-    var x21 = x2 - x1;
-    var x32 = x3 - x2;
-    var y21 = y2 - y1;
-    var y32 = y3 - y2;
-    if(x21*y32 - y21*x32 >= 0){
-	return;
-    }
-
-
     var u1 = surface.getTexX(0)*tex.width;
     var v1 = surface.getTexY(0)*tex.height;
     var u2 = surface.getTexX(1)*tex.width;
@@ -124,10 +115,25 @@ Surface.prototype = {
     getTexY: function(index){return this.texcoord[index*2+1];},
     getLineStyle: function(index) { return this.lineStyle;},
 
-    getSurfaceZ: function()
+    getMostFrontZ: function()
     {
 	return Math.max(this.getTransformedZ(0), this.getTransformedZ(1), this.getTransformedZ(2));
     },
+    isFrontFace: function()
+    {
+	var x1 = this.getTransformedX(0);
+	var y1 = this.getTransformedY(0);
+	var x2 = this.getTransformedX(1);
+	var y2 = this.getTransformedY(1);
+	var x3 = this.getTransformedX(2);
+	var y3 = this.getTransformedY(2);
+	var x21 = x2 - x1;
+	var x32 = x3 - x2;
+	var y21 = y2 - y1;
+	var y32 = y3 - y2;
+	return x21*y32 - y21*x32 < 0;
+    },
+
     isNeedToClip: function()
     {
 	return !(this.texcoord.length == 8
