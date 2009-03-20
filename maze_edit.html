@@ -5,10 +5,17 @@
     <script type="text/javascript" src="surface.js"></script>
     <script type="text/javascript" src="js_sokoban.js"></script>
     <script type="text/javascript">
+var mazeText = "";
 function updateModel()
 {
-      updateMazeModel(splitMazeLines(document.getElementById('mazedata').value));
+  var mazeTextNew = document.getElementById('mazedata').value;
+  if(mazeTextNew != mazeText){
+    mazeText = mazeTextNew;
+    updateMazeModel(splitMazeLines(mazeText));
+  }
+  setTimeout(updateModel, 500);
 }
+
     </script>
   </head>
   <body onload="init(); updateModel(); startRotation();">
