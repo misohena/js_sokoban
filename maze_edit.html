@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>JS</title>
+    <script type="text/javascript" src="vecmath.js"></script>
+    <script type="text/javascript" src="surface.js"></script>
+    <script type="text/javascript" src="js_sokoban.js"></script>
+    <script type="text/javascript">
+function updateModel()
+{
+      updateMazeModel(splitMazeLines(document.getElementById('mazedata').value));
+}
+    </script>
+  </head>
+  <body onload="init(); updateModel(); startRotation();">
+    <canvas id="canvas" width="480" height="360">canvas要素に対応したブラウザが必要です。</canvas>
+    <textarea id="mazedata" cols="40" rows="10">...#####.......
+...#   #.......
+.###   #######.
+.#       @   #.
+.## ## #   ###.
+..# #      #...
+..# ####   #...
+..#        #...
+..##########...</textarea>
+    <div id="toolbar">
+      <input type="button" value="停止" onclick="stopRotation();">
+      <input type="button" value="回転" onclick="startRotation();">
+      <input type="button" value="データ反映" onclick="updateModel();">
+    </div>
+
+
+  </body>
+</html>
