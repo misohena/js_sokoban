@@ -346,9 +346,3 @@ Mat44.newLookAtLH = function(pos, target, up)
 }
 
 
-/*
-var v = new Vec3(5,6,7);
-alert(v);
-var v2 = new Vec3(1);
-alert(v2);
-*/
