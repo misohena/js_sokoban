@@ -1,3 +1,6 @@
+
+// ---------------------------------------------------------------------------
+
 MazeUtil = {
     maxElement: function(arr, pred)
     {
@@ -20,6 +23,8 @@ Cell = {
     FLOOR: 1,
     WALL: 2
 };
+
+// ---------------------------------------------------------------------------
 
 function Maze(cells, player)
 {
@@ -44,7 +49,7 @@ function loadMaze(strs)
     var player = null;
     var cells = [];
 
-    for(var y in strs){
+    for(var y = 0; y < strs.length; ++y){
 
 	var cellsRow = [];
 
@@ -62,7 +67,6 @@ function loadMaze(strs)
 
     return new Maze(cells, player);
 }
-
 
 
 function outputMazeText(maze)
@@ -88,6 +92,74 @@ function outputMazeText(maze)
 }
 
 
+// ---------------------------------------------------------------------------
+
+/**
+ * 使用する画像の集合を保持するクラスです。
+ */
+function MazeImageSet()
+{
+    this.imageCountTotal = 0;
+    this.imageCountLoaded = 0;
+}
+MazeImageSet.prototype = {
+    addImage: function(src)
+    {
+	var im = new Image();
+	var th = this;
+	im.onload = function(){ th.onLoadImage();}
+	im.src = src;
+	++this.imageCountTotal;
+	return im;
+    },
+    onLoadImage: function()
+    {
+	++this.imageCountLoaded;
+	if(this.onProgress){
+	    this.onProgress(this);
+	}
+	if(this.isComplete()){
+	    if(this.onComplete){
+		this.onComplete(this);
+	    }
+	}
+    },
+    isComplete: function()
+    {
+	return this.imageCountLoaded >= this.imageCountTotal;
+    },
+    getLoadCount: function()
+    {
+	return this.imageCountLoaded;
+    },
+    getTotalCount: function()
+    {
+	return this.imageCountTotal;
+    }
+}
+
+function drawImageLoadProgressBar(images)
+{
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var barLeft = canvas.width*2/10;
+    var barTop = canvas.height*4/10;
+    var barWidth = canvas.width*6/10;
+    var barHeight = canvas.height*1/10;
+    ctx.fillRect(barLeft,
+		 barTop,
+		 barWidth * images.getLoadCount() / images.getTotalCount(),
+		 barHeight);
+    ctx.strokeRect(barLeft, barTop, barWidth, barHeight);
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------------
 
 function MazeShape(maze)
 {
@@ -97,10 +169,8 @@ function MazeShape(maze)
     this.transformed = new Array();
     this.surfaces = new Array();
 
-    var imWall = new Image();
-    imWall.src = "img/brick.png";
-    var imFloor = new Image();
-    imFloor.src = "img/oak.png";
+    var imWall = images.imMazeWall;
+    var imFloor = images.imMazeFloor;
 
     var idx;
     for(var y = 0; y < maze.height; ++y){
@@ -161,7 +231,67 @@ function MazeShape(maze)
     }
 }
 
+function PlayerShape(maze, matView)
+{
+    this.vertices = new Array();
+    this.transformed = new Array();
+    this.surfaces = new Array();
 
+    var cx = maze.player.x + 0.5;
+    var cy = maze.player.y + 0.5;
+    this.matWorld = new Mat44(
+	matView[0], matView[4], matView[8], 0,
+	matView[1], matView[5], matView[9], 0,
+	matView[2], matView[6], matView[10], 0,
+	cx, 0, -cy, 1);
+
+    var PLAYER_HEIGHT = 1.5;
+    var PLAYER_Z_DELTA = -0.5;
+    this.vertices.push(-0.5, PLAYER_HEIGHT, PLAYER_Z_DELTA);
+    this.vertices.push(-0.5, 0, PLAYER_Z_DELTA);
+    this.vertices.push(0.5, 0, PLAYER_Z_DELTA);
+    this.vertices.push(0.5, PLAYER_HEIGHT, PLAYER_Z_DELTA);
+
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[0, 1, 2, 3],
+	[0,0, 0,1, 1,1, 1,0],
+	images.imPlayerStand[0][0], null));
+}
+
+function transformShape(frontFaces, shape, mat)
+{
+    if(shape.matWorld){
+	var m = new Mat44();
+	m.mul(shape.matWorld, mat);
+	mat = m;
+    }
+
+    // Transform Vertices.
+    var vcount = shape.vertices.length / 3;
+    var src = new Vec3();
+    var dst = new Vec3();
+    for(var vi = 0; vi < vcount; ++vi){
+	src.set(shape.vertices[vi*3+0], shape.vertices[vi*3+1], shape.vertices[vi*3+2]);
+	dst.mul(src, mat);
+	shape.transformed[vi*3+0] = dst[0];
+	shape.transformed[vi*3+1] = dst[1];
+	shape.transformed[vi*3+2] = dst[2];
+    }
+
+    // Cull backfacing surfaces.
+    for(var si = 0; si < shape.surfaces.length; ++si){
+	if(shape.surfaces[si].isFrontFace()){
+	    frontFaces.push(shape.surfaces[si]);
+	}
+    }
+}
+
+
+
+
+
+// ---------------------------------------------------------------------------
 
 function init()
 {
@@ -194,7 +324,7 @@ function updateMazeModel(arrayLines)
 
     mazeShape = new MazeShape(maze);
 
-    drawMazeShape();
+    drawMaze();
 }
 
 
@@ -206,7 +336,7 @@ function startRotation()
     var onTime = function()
     {
 	cameraAngle += Math.PI/180*5;
-	drawMazeShape();
+	drawMaze();
     };
     timerRotation = setInterval(onTime, 100);
 }
@@ -221,11 +351,12 @@ function stopRotation()
 }
 
 
-function drawMazeShape()
+function drawMaze()
 {
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
 
+    // Create Transform Matrix
     var centerX = maze.width/2;
     var centerY = maze.height/2;
     var eyeX = centerX + Math.cos(cameraAngle) * 20;
@@ -233,6 +364,7 @@ function drawMazeShape()
 
     var widthCells = maze.width;
     var matView = Mat44.newLookAtLH(new Vec3(eyeX,30,-eyeY), new Vec3(centerX,0,-centerY), new Vec3(0,1,0));
+
     var matProj = new Mat44(
 	2/widthCells,0,0,0,
 	0,2/(widthCells*canvas.height/canvas.width),0,0,
@@ -248,25 +380,12 @@ function drawMazeShape()
     mat.mul(matView, matProj);
     mat.mul(mat, matScreen);
 
-    // Transform vertices.
-    var vcount = mazeShape.vertices.length / 3;
-    var src = new Vec3();
-    var dst = new Vec3();
-    for(var vi = 0; vi < vcount; ++vi){
-	src.set(mazeShape.vertices[vi*3+0], mazeShape.vertices[vi*3+1], mazeShape.vertices[vi*3+2]);
-	dst.mul(src, mat);
-	mazeShape.transformed[vi*3+0] = dst[0];
-	mazeShape.transformed[vi*3+1] = dst[1];
-	mazeShape.transformed[vi*3+2] = dst[2];
-    }
-
-    // Cull backfacing surfaces.
+    // Create Transformed Surfaces.
     var frontFaces = new Array();
-    for(var si = 0; si < mazeShape.surfaces.length; ++si){
-	if(mazeShape.surfaces[si].isFrontFace()){
-	    frontFaces.push(mazeShape.surfaces[si]);
-	}
-    }
+    transformShape(frontFaces, mazeShape, mat);
+    var playerShape = new PlayerShape(maze, matView);
+    transformShape(frontFaces, playerShape, mat);
+
 
     // Sort surfaces by z.
     frontFaces.sort(function(lhs, rhs) { return rhs.getMostFrontZ() - lhs.getMostFrontZ();});
@@ -293,8 +412,32 @@ var dataMazeTest =
 
 function main()
 {
-    init();
-    updateMazeModel(dataMazeTest);
-    startRotation();
+    // 読み込む画像を定義する。
+    images = new MazeImageSet();
+    images.imMazeWall = images.addImage("img/brick.png");
+    images.imMazeFloor = images.addImage("img/oak.png");
+    images.imPlayerStand = new Array();
+    images.imPlayerWalk = new Array();
+    for(var dir = 0; dir < 4; ++dir){
+	var dirstr
+	    = (dir == 0) ? "right"
+	    : (dir == 1) ? "front"
+	    : (dir == 2) ? "left"
+	    : "back";
+	images.imPlayerStand[dir] = new Array();
+	images.imPlayerStand[dir][0] = images.addImage("img/obj_man_" + dirstr + "_s0.png");
+	images.imPlayerWalk[dir] = new Array();
+	for(var pat = 0; pat < 8; ++pat){
+	    images.imPlayerWalk[dir][0] = images.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
+	}
+    }
+
+
+    images.onProgress = drawImageLoadProgressBar;
+    images.onComplete = function(){
+	init();
+	updateMazeModel(dataMazeTest);
+	startRotation();
+    }
 }
 
