@@ -1,108 +1,16 @@
-
 // ---------------------------------------------------------------------------
-
-MazeUtil = {
-    maxElement: function(arr, pred)
-    {
-	if(arr.length <= 0){
-	    return null;
-	}
-	var result = arr[0];
-	for(var i = 1; i < arr.length; ++i){
-	    if(pred(result, arr[i])){
-		result = arr[i];
-	    }
-	}
-	return result;
-    }
-};
-
-
-Cell = {
-    OUTSIDE: 0,
-    FLOOR: 1,
-    WALL: 2
-};
-
-// ---------------------------------------------------------------------------
-
-function Maze(cells, player)
-{
-    this.cells = cells;
-    this.player = player;
-
-    this.width = MazeUtil.maxElement(cells, function(lhs, rhs){return lhs.length < rhs.length;}).length;
-    this.height = cells.length;
-}
-Maze.prototype = {
-    cellAt: function(x, y)
-    {
-	return (y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[y].length)
-	    ? this.cells[y][x] : Cell.OUTSIDE;
-    }
-};
-
-
-function loadMaze(strs)
-{
-    var assert = function(cond) { if(!cond){ throw "Failed to load maze.";}};
-    var player = null;
-    var cells = [];
-
-    for(var y = 0; y < strs.length; ++y){
-
-	var cellsRow = [];
-
-	for(var x = 0; x < strs[y].length; ++x){ // for/inではダメだった。Firefoxは動いたけど。
-	    switch(strs[y].charAt(x)){ //strs[y][x]と書いたらIEで動かなかった。
-	    case '#': cellsRow.push(Cell.WALL); break;
-	    case '@': cellsRow.push(Cell.FLOOR); assert(!player); player = {x:x, y:y}; break;
-	    case ' ': cellsRow.push(Cell.FLOOR); break;
-	    default: cellsRow.push(Cell.OUTSIDE); break;
-	    }
-	}
-
-	cells.push(cellsRow);
-    }
-
-    return new Maze(cells, player);
-}
-
-
-function outputMazeText(maze)
-{
-    document.open();
-    document.write("<pre>");
-
-    for(var y in maze.cells){
-	var line = "";
-	for(var x in maze.cells[y]){
-	    switch(maze.cells[y][x]){
-	    case Cell.OUTSIDE: line += '.'; break;
-	    case Cell.FLOOR: line += ' '; break;
-	    case Cell.WALL: line += '#'; break;
-	    }
-	}
-	document.writeln(line);
-    }
-    document.writeln("player:(" + maze.player.x + "," + maze.player.y + ")");
-
-    document.write("</pre>");
-    document.close();
-}
-
-
+// ImageSet
 // ---------------------------------------------------------------------------
 
 /**
  * 使用する画像の集合を保持するクラスです。
  */
-function MazeImageSet()
+function ImageSet()
 {
     this.imageCountTotal = 0;
     this.imageCountLoaded = 0;
 }
-MazeImageSet.prototype = {
+ImageSet.prototype = {
     addImage: function(src)
     {
 	var im = new Image();
@@ -138,7 +46,11 @@ MazeImageSet.prototype = {
     }
 }
 
-function drawImageLoadProgressBar(images)
+/**
+ * 画像の読み込み状況をcanvas要素へ描画します。
+ * ImageSetのonProgressへ設定して使います。
+ */
+function drawImageLoadProgressBar(imgs)
 {
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
@@ -150,16 +62,167 @@ function drawImageLoadProgressBar(images)
     var barHeight = canvas.height*1/10;
     ctx.fillRect(barLeft,
 		 barTop,
-		 barWidth * images.getLoadCount() / images.getTotalCount(),
+		 barWidth * imgs.getLoadCount() / imgs.getTotalCount(),
 		 barHeight);
     ctx.strokeRect(barLeft, barTop, barWidth, barHeight);
 }
 
 
+
 // ---------------------------------------------------------------------------
+// MazeUtil
+// ---------------------------------------------------------------------------
+
+MazeUtil = {
+    /**
+     * 配列中の一番大きい要素を返します。
+     */
+    maxElement: function(arr, predLess)
+    {
+	if(arr.length <= 0){
+	    return null;
+	}
+	var result = arr[0];
+	for(var i = 1; i < arr.length; ++i){
+	    if(predLess(result, arr[i])){
+		result = arr[i];
+	    }
+	}
+	return result;
+    },
+
+    /**
+     * 文字列を\nで切り分けた配列を返します。
+     */
+    splitLines: function(str)
+    {
+	var lines = new Array();
+	lines.push("");
+	for(var i = 0; i < str.length; ++i){
+	    var ch = str.charAt(i);
+	    if(ch == '\n'){
+		lines.push("");
+	    }
+	    else{
+		lines[lines.length-1] += ch;
+	    }
+	}
+	return lines;
+    }
+
+};
 
 
 // ---------------------------------------------------------------------------
+// Maze
+// ---------------------------------------------------------------------------
+
+Cell = {
+    OUTSIDE: 0,
+    FLOOR: 1,
+    WALL: 2,
+    GOAL: 3
+};
+
+function Maze(cells, player, boxes)
+{
+    this.cells = cells;
+    this.player = player;
+    this.boxes = boxes;
+
+    this.width = MazeUtil.maxElement(cells, function(lhs, rhs){return lhs.length < rhs.length;}).length;
+    this.height = cells.length;
+}
+Maze.prototype = {
+    cellAt: function(x, y)
+    {
+	return (y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[y].length)
+	    ? this.cells[y][x] : Cell.OUTSIDE;
+    }
+};
+
+
+function loadMaze(strs)
+{
+    var assert = function(cond) { if(!cond){ throw "Failed to load maze.";}};
+    var player = null;
+    var cells = [];
+    var boxes = new Array();
+
+    for(var y = 0; y < strs.length; ++y){
+
+	var cellsRow = [];
+
+	for(var x = 0; x < strs[y].length; ++x){ // for/inではダメだった。Firefoxは動いたけど。
+	    switch(strs[y].charAt(x)){ //strs[y][x]と書いたらIEで動かなかった。
+	    case '#': cellsRow.push(Cell.WALL); break;
+	    case '@': cellsRow.push(Cell.FLOOR); assert(!player); player = {x:x, y:y}; break;
+	    case ' ': cellsRow.push(Cell.FLOOR); break;
+	    case 'B': cellsRow.push(Cell.FLOOR); boxes.push({x:x, y:y}); break;
+	    case 'O': cellsRow.push(Cell.GOAL); break;
+	    default: cellsRow.push(Cell.OUTSIDE); break;
+	    }
+	}
+
+	cells.push(cellsRow);
+    }
+
+    return new Maze(cells, player, boxes);
+}
+
+
+function outputMazeText(maze)
+{
+    document.open();
+    document.write("<pre>");
+
+    for(var y in maze.cells){
+	var line = "";
+	for(var x in maze.cells[y]){
+	    switch(maze.cells[y][x]){
+	    case Cell.OUTSIDE: line += '.'; break;
+	    case Cell.FLOOR: line += ' '; break;
+	    case Cell.WALL: line += '#'; break;
+	    }
+	}
+	document.writeln(line);
+    }
+    document.writeln("player:(" + maze.player.x + "," + maze.player.y + ")");
+
+    document.write("</pre>");
+    document.close();
+}
+
+
+// ---------------------------------------------------------------------------
+// 描画関連
+// ---------------------------------------------------------------------------
+
+function defineImageSet()
+{
+    // 読み込む画像を定義する。
+    var imgs = new ImageSet();
+    imgs.imMazeWall = imgs.addImage("img/brick.png");
+    imgs.imMazeFloor = imgs.addImage("img/oak.png");
+    imgs.imMazeGoal = imgs.addImage("img/goal.png");
+
+    imgs.imPlayerStand = new Array();
+    imgs.imPlayerWalk = new Array();
+    for(var dir = 0; dir < 4; ++dir){
+	var dirstr
+	    = (dir == 0) ? "right"
+	    : (dir == 1) ? "front"
+	    : (dir == 2) ? "left"
+	    : "back";
+	imgs.imPlayerStand[dir] = new Array();
+	imgs.imPlayerStand[dir][0] = imgs.addImage("img/obj_man_" + dirstr + "_s0.png");
+	imgs.imPlayerWalk[dir] = new Array();
+	for(var pat = 0; pat < 8; ++pat){
+	    imgs.imPlayerWalk[dir][0] = imgs.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
+	}
+    }
+    return imgs;
+}
 
 function MazeShape(maze)
 {
@@ -171,6 +234,7 @@ function MazeShape(maze)
 
     var imWall = images.imMazeWall;
     var imFloor = images.imMazeFloor;
+    var imGoal = images.imMazeGoal;
 
     var idx;
     for(var y = 0; y < maze.height; ++y){
@@ -226,6 +290,20 @@ function MazeShape(maze)
 		    [0,0, 0,1, 1,1, 1,0],
 		    imFloor, "#000"));
 		break;
+	    case Cell.GOAL:
+		idx = this.vertices.length/3;
+		this.vertices.push(x, 0, -y);
+		this.vertices.push(x, 0, -y-1);
+		this.vertices.push(x+1, 0, -y-1);
+		this.vertices.push(x+1, 0, -y);
+
+		this.surfaces.push(new Surface(
+		    this.transformed,
+		    [idx+0, idx+1, idx+2, idx+3],
+		    [0,0, 0,1, 1,1, 1,0],
+		    imGoal, "#000"));
+		break;
+		break;
 	    }
         }
     }
@@ -259,6 +337,55 @@ function PlayerShape(maze, matView)
 	images.imPlayerStand[0][0], null));
 }
 
+function BoxShape(box)
+{
+    var x = box.x;
+    var y = box.y;
+    var imBox = images.imMazeFloor;
+
+    this.vertices = new Array();
+    this.transformed = new Array();
+    this.surfaces = new Array();
+
+    var BOX_HEIGHT = 1.0;
+    var MARGIN = 0.1;
+    idx = 0;
+    this.vertices.push(x+MARGIN, BOX_HEIGHT, -y-MARGIN);
+    this.vertices.push(x+MARGIN, BOX_HEIGHT, -y-1+MARGIN);
+    this.vertices.push(x+1-MARGIN, BOX_HEIGHT, -y-1+MARGIN);
+    this.vertices.push(x+1-MARGIN, BOX_HEIGHT, -y-MARGIN);
+    this.vertices.push(x+MARGIN, 0, -y-MARGIN);
+    this.vertices.push(x+MARGIN, 0, -y-1+MARGIN);
+    this.vertices.push(x+1-MARGIN, 0, -y-1+MARGIN);
+    this.vertices.push(x+1-MARGIN, 0, -y-MARGIN);
+
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[idx+0, idx+1, idx+2, idx+3],
+	[0,0, 0,1, 1,1, 1,0],
+	imBox, "#000"));
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[idx+0, idx+4, idx+5, idx+1],
+	[0,0, 0,1, 1,1, 1,0],
+	imBox, "#000"));
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[idx+1, idx+5, idx+6, idx+2],
+	[0,0, 0,1, 1,1, 1,0],
+	imBox, "#000"));
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[idx+2, idx+6, idx+7, idx+3],
+	[0,0, 0,1, 1,1, 1,0],
+	imBox, "#000"));
+    this.surfaces.push(new Surface(
+	this.transformed,
+	[idx+3, idx+7, idx+4, idx+0],
+	[0,0, 0,1, 1,1, 1,0],
+	imBox, "#000"));
+}
+
 function transformShape(frontFaces, shape, mat)
 {
     if(shape.matWorld){
@@ -288,67 +415,6 @@ function transformShape(frontFaces, shape, mat)
 }
 
 
-
-
-
-// ---------------------------------------------------------------------------
-
-function init()
-{
-    timerRotation = null;
-    cameraAngle = Math.PI*0.4;
-    maze = null;
-    mazeShape = null;
-}
-
-function splitMazeLines(mazeText)
-{
-    var arrayLines = new Array();
-    arrayLines.push("");
-    for(var i = 0; i < mazeText.length; ++i){
-	var ch = mazeText.charAt(i);
-	if(ch == '\n'){
-	    arrayLines.push("");
-	}
-	else{
-	    arrayLines[arrayLines.length-1] += ch;
-	}
-    }
-    return arrayLines;
-}
-
-function updateMazeModel(arrayLines)
-{
-    maze = loadMaze(arrayLines);
-    //outputMazeText(maze); return;
-
-    mazeShape = new MazeShape(maze);
-
-    drawMaze();
-}
-
-
-function startRotation()
-{
-    if(timerRotation){
-	return;
-    }
-    var onTime = function()
-    {
-	cameraAngle += Math.PI/180*5;
-	drawMaze();
-    };
-    timerRotation = setInterval(onTime, 100);
-}
-
-function stopRotation()
-{
-    if(!timerRotation){
-	return;
-    }
-    clearInterval(timerRotation);
-    timerRotation = null;
-}
 
 
 function drawMaze()
@@ -385,6 +451,10 @@ function drawMaze()
     transformShape(frontFaces, mazeShape, mat);
     var playerShape = new PlayerShape(maze, matView);
     transformShape(frontFaces, playerShape, mat);
+    for(var bi = 0; bi < maze.boxes.length; ++bi){
+	var boxShape = new BoxShape(maze.boxes[bi]);
+	transformShape(frontFaces, boxShape, mat)
+    }
 
 
     // Sort surfaces by z.
@@ -397,6 +467,56 @@ function drawMaze()
 	drawSurface(ctx, frontFaces[si]);
     }
 }
+
+
+
+
+
+// ---------------------------------------------------------------------------
+
+function init()
+{
+    timerRotation = null;
+    cameraAngle = Math.PI*0.4;
+    maze = null;
+    mazeShape = null;
+    images = defineImageSet();
+}
+
+function updateMazeModel(arrayLines)
+{
+    maze = loadMaze(arrayLines);
+    //outputMazeText(maze); return;
+
+    mazeShape = new MazeShape(maze);
+
+    drawMaze();
+}
+
+
+function startRotation()
+{
+    if(timerRotation){
+	return;
+    }
+    var onTime = function()
+    {
+	cameraAngle += Math.PI/180*5;
+	drawMaze();
+    };
+    timerRotation = setInterval(onTime, 100);
+}
+
+function stopRotation()
+{
+    if(!timerRotation){
+	return;
+    }
+    clearInterval(timerRotation);
+    timerRotation = null;
+}
+
+
 
 
 var dataMazeTest =
@@ -412,27 +532,6 @@ var dataMazeTest =
 
 function main()
 {
-    // 読み込む画像を定義する。
-    images = new MazeImageSet();
-    images.imMazeWall = images.addImage("img/brick.png");
-    images.imMazeFloor = images.addImage("img/oak.png");
-    images.imPlayerStand = new Array();
-    images.imPlayerWalk = new Array();
-    for(var dir = 0; dir < 4; ++dir){
-	var dirstr
-	    = (dir == 0) ? "right"
-	    : (dir == 1) ? "front"
-	    : (dir == 2) ? "left"
-	    : "back";
-	images.imPlayerStand[dir] = new Array();
-	images.imPlayerStand[dir][0] = images.addImage("img/obj_man_" + dirstr + "_s0.png");
-	images.imPlayerWalk[dir] = new Array();
-	for(var pat = 0; pat < 8; ++pat){
-	    images.imPlayerWalk[dir][0] = images.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
-	}
-    }
-
-
     images.onProgress = drawImageLoadProgressBar;
     images.onComplete = function(){
 	init();

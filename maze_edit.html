@@ -11,7 +11,7 @@ function updateModel()
   var mazeTextNew = document.getElementById('mazedata').value;
   if(mazeTextNew != mazeText){
     mazeText = mazeTextNew;
-    updateMazeModel(splitMazeLines(mazeText));
+    updateMazeModel(MazeUtil.splitLines(mazeText));
   }
   setTimeout(updateModel, 500);
 }
