@@ -77,9 +77,12 @@ function drawSurface(ctx, surface)
 	ctx.clip();
     }
 
-    ctx.setTransform(a,b,c,d,e,f);
+    ctx.save();
+    ctx.transform(a,b,c,d,e,f);
     ctx.drawImage(tex, 0, 0);
-    ctx.setTransform(1,0,0,1,0,0);
+    ctx.restore();
+    //Safari‚ªsetTransform‚ğÀ‘•‚µ‚Ä‚¢‚È‚¢‚Ì‚ÅsaveArestore‚Å‘ã—pB
+    //ctx.setTransform(1,0,0,1,0,0);
 
     var lineStyle = surface.getLineStyle();
     if(lineStyle){
