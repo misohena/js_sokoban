@@ -533,9 +533,9 @@ var dataMazeTest =
 
 function main()
 {
+    init();
     images.onProgress = drawImageLoadProgressBar;
     images.onComplete = function(){
-	init();
 	updateMazeModel(dataMazeTest);
 	startRotation();
     }
