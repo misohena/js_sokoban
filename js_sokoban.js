@@ -205,6 +205,7 @@ function defineImageSet()
     imgs.imMazeWall = imgs.addImage("img/brick.png");
     imgs.imMazeFloor = imgs.addImage("img/oak.png");
     imgs.imMazeGoal = imgs.addImage("img/goal.png");
+    imgs.imBoxSide = imgs.addImage("img/box_side.png");
 
     imgs.imPlayerStand = new Array();
     imgs.imPlayerWalk = new Array();
@@ -341,7 +342,7 @@ function BoxShape(box)
 {
     var x = box.x;
     var y = box.y;
-    var imBox = images.imMazeFloor;
+    var imBox = images.imBoxSide;
 
     this.vertices = new Array();
     this.transformed = new Array();
