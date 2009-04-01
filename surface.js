@@ -77,15 +77,14 @@ function drawSurface(ctx, surface)
 	ctx.clip();
     }
 
-    ctx.save();
-    ctx.transform(a,b,c,d,e,f);
+    ctx.transform(a,b,c,d,e,f); //SafariがsetTransformを実装していなかったので注意。
     ctx.drawImage(tex, 0, 0);
     ctx.restore();
-    //SafariがsetTransformを実装していないのでsave、restoreで代用。
-    //ctx.setTransform(1,0,0,1,0,0);
 
+    // Draw Poly-lines
     var lineStyle = surface.getLineStyle();
     if(lineStyle){
+	ctx.save();
 	ctx.strokeStyle = lineStyle;
 	ctx.beginPath();
 	ctx.moveTo(surface.getTransformedX(0), surface.getTransformedY(0));
@@ -94,8 +93,8 @@ function drawSurface(ctx, surface)
 	}
 	ctx.closePath();
 	ctx.stroke();
+	ctx.restore();
     }
-    ctx.restore();
 }
 
 
