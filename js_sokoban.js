@@ -237,73 +237,97 @@ function MazeShape(maze)
     var imFloor = images.imMazeFloor;
     var imGoal = images.imMazeGoal;
 
-    var idx;
+    var points = {
+	getIndex: function(x, y, z, ver)
+	{
+	    var key = "pt " + x + "," + y + "," + z;
+	    var idx = this[key];
+	    if(!idx){
+		idx = ver.length / 3;
+		this[key] = idx;
+		ver.push(x, y, z);
+	    }
+	    return idx;
+	}
+    };
+
+    var idx10;
+    var idx11;
+    var idx12;
+    var idx13;
+    var idx00;
+    var idx01;
+    var idx02;
+    var idx03;
     for(var y = 0; y < maze.height; ++y){
+
 	for(var x = 0; x < maze.width; ++x){
 	    switch(maze.cellAt(x, y)){
 	    case Cell.WALL:
-		idx = this.vertices.length/3;
-		this.vertices.push(x, WALL_HEIGHT, -y);
-		this.vertices.push(x, WALL_HEIGHT, -y-1);
-		this.vertices.push(x+1, WALL_HEIGHT, -y-1);
-		this.vertices.push(x+1, WALL_HEIGHT, -y);
-		this.vertices.push(x, 0, -y);
-		this.vertices.push(x, 0, -y-1);
-		this.vertices.push(x+1, 0, -y-1);
-		this.vertices.push(x+1, 0, -y);
+		idx10 = points.getIndex(x, WALL_HEIGHT, -y, this.vertices);
+		idx11 = points.getIndex(x, WALL_HEIGHT, -y-1, this.vertices);
+		idx12 = points.getIndex(x+1, WALL_HEIGHT, -y-1, this.vertices);
+		idx13 = points.getIndex(x+1, WALL_HEIGHT, -y, this.vertices);
+		idx00 = points.getIndex(x, 0, -y, this.vertices);
+		idx01 = points.getIndex(x, 0, -y-1, this.vertices);
+		idx02 = points.getIndex(x+1, 0, -y-1, this.vertices);
+		idx03 = points.getIndex(x+1, 0, -y, this.vertices);
 
 		this.surfaces.push(new Surface(
 		    this.transformed,
-		    [idx+0, idx+1, idx+2, idx+3],
+		    [idx10, idx11, idx12, idx13],
 		    [0,0, 0,1, 1,1, 1,0],
 		    imWall, "#000"));
-		this.surfaces.push(new Surface(
-		    this.transformed,
-		    [idx+0, idx+4, idx+5, idx+1],
-		    [0,0, 0,1, 1,1, 1,0],
-		    imWall, "#000"));
-		this.surfaces.push(new Surface(
-		    this.transformed,
-		    [idx+1, idx+5, idx+6, idx+2],
-		    [0,0, 0,1, 1,1, 1,0],
-		    imWall, "#000"));
-		this.surfaces.push(new Surface(
-		    this.transformed,
-		    [idx+2, idx+6, idx+7, idx+3],
-		    [0,0, 0,1, 1,1, 1,0],
-		    imWall, "#000"));
-		this.surfaces.push(new Surface(
-		    this.transformed,
-		    [idx+3, idx+7, idx+4, idx+0],
-		    [0,0, 0,1, 1,1, 1,0],
-		    imWall, "#000"));
+		if(maze.cellAt(x-1, y) != Cell.WALL){
+		    this.surfaces.push(new Surface(
+			this.transformed,
+			[idx10, idx00, idx01, idx11],
+			[0,0, 0,1, 1,1, 1,0],
+			imWall, "#000"));
+		}
+		if(maze.cellAt(x, y+1) != Cell.WALL){
+		    this.surfaces.push(new Surface(
+			this.transformed,
+			[idx11, idx01, idx02, idx12],
+			[0,0, 0,1, 1,1, 1,0],
+			imWall, "#000"));
+		}
+		if(maze.cellAt(x+1, y) != Cell.WALL){
+		    this.surfaces.push(new Surface(
+			this.transformed,
+			[idx12, idx02, idx03, idx13],
+			[0,0, 0,1, 1,1, 1,0],
+			imWall, "#000"));
+		}
+		if(maze.cellAt(x, y-1) != Cell.WALL){
+		    this.surfaces.push(new Surface(
+			this.transformed,
+			[idx13, idx03, idx00, idx10],
+			[0,0, 0,1, 1,1, 1,0],
+			imWall, "#000"));
+		}
 		break;
 	    case Cell.FLOOR:
-		idx = this.vertices.length/3;
-		this.vertices.push(x, 0, -y);
-		this.vertices.push(x, 0, -y-1);
-		this.vertices.push(x+1, 0, -y-1);
-		this.vertices.push(x+1, 0, -y);
-
+		idx00 = points.getIndex(x, 0, -y, this.vertices);
+		idx01 = points.getIndex(x, 0, -y-1, this.vertices);
+		idx02 = points.getIndex(x+1, 0, -y-1, this.vertices);
+		idx03 = points.getIndex(x+1, 0, -y, this.vertices);
 		this.surfaces.push(new Surface(
 		    this.transformed,
-		    [idx+0, idx+1, idx+2, idx+3],
+		    [idx00, idx01, idx02, idx03],
 		    [0,0, 0,1, 1,1, 1,0],
 		    imFloor, "#000"));
 		break;
 	    case Cell.GOAL:
-		idx = this.vertices.length/3;
-		this.vertices.push(x, 0, -y);
-		this.vertices.push(x, 0, -y-1);
-		this.vertices.push(x+1, 0, -y-1);
-		this.vertices.push(x+1, 0, -y);
-
+		idx00 = points.getIndex(x, 0, -y, this.vertices);
+		idx01 = points.getIndex(x, 0, -y-1, this.vertices);
+		idx02 = points.getIndex(x+1, 0, -y-1, this.vertices);
+		idx03 = points.getIndex(x+1, 0, -y, this.vertices);
 		this.surfaces.push(new Surface(
 		    this.transformed,
-		    [idx+0, idx+1, idx+2, idx+3],
+		    [idx00, idx01, idx02, idx03],
 		    [0,0, 0,1, 1,1, 1,0],
 		    imGoal, "#000"));
-		break;
 		break;
 	    }
         }
