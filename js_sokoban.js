@@ -127,7 +127,7 @@ Cell = {
 function Maze(cells, player, boxes)
 {
     this.cells = cells;
-    this.player = player;
+    this.player = new Player(player.x, player.y);
     this.boxes = boxes;
 
     this.width = MazeUtil.maxElement(cells, function(lhs, rhs){return lhs.length < rhs.length;}).length;
@@ -192,6 +192,19 @@ function outputMazeText(maze)
     document.write("</pre>");
     document.close();
 }
+
+
+// ---------------------------------------------------------------------------
+// Player
+// ---------------------------------------------------------------------------
+
+function Player(x, y)
+{
+    this.x = x;
+    this.y = y;
+}
+
+
 
 
 // ---------------------------------------------------------------------------
