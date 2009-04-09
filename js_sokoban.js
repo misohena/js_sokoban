@@ -128,7 +128,10 @@ function Maze(cells, player, boxes)
 {
     this.cells = cells;
     this.player = new Player(player.x, player.y);
-    this.boxes = boxes;
+    this.boxes = new Array(boxes.length);
+    for(var bi = 0; bi < boxes.length; ++bi){
+	this.boxes[bi] = new Box(boxes[bi].x, boxes[bi].y);
+    }
 
     this.width = MazeUtil.maxElement(cells, function(lhs, rhs){return lhs.length < rhs.length;}).length;
     this.height = cells.length;
@@ -138,6 +141,45 @@ Maze.prototype = {
     {
 	return (y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[y].length)
 	    ? this.cells[y][x] : Cell.OUTSIDE;
+    },
+
+    cellIsEmpty: function(x, y)
+    {
+	var c = this.cellAt(x, y);
+	return c == Cell.FLOOR || c == Cell.GOAL;
+    },
+
+    findBox: function(x, y)
+    {
+	for(var bi = 0; bi < this.boxes.length; ++bi){
+	    if(this.boxes[bi].x == x && this.boxes[bi].y == y){
+		return this.boxes[bi];
+	    }
+	}
+	return null;
+    },
+
+    advanceTime: function(dt)
+    {
+	if(this.player){
+	    this.player.advanceTime(dt);
+	}
+	for(var bi = 0; bi < this.boxes.length; ++bi){
+	    this.boxes[bi].advanceTime(dt);
+	}
+    },
+
+    hasMovingObject: function()
+    {
+	if(this.player && !this.player.isWaiting()){
+	    return true;
+	}
+	for(var bi = 0; bi < this.boxes.length; ++bi){
+	    if(!this.boxes[bi].isWaiting()){
+		return true;
+	    }
+	}
+	return false;
     }
 };
 
@@ -195,14 +237,91 @@ function outputMazeText(maze)
 
 
 // ---------------------------------------------------------------------------
+// GameObject
+// ---------------------------------------------------------------------------
+
+function GameObject()
+{
+    this.initGameObject.apply(this, arguments);
+}
+GameObject.prototype = {
+    initGameObject: function(x, y)
+    {
+	this.x = x;
+	this.y = y;
+	this.state = null;
+	this.age = 0;
+    },
+
+    advanceTime: function(dt)
+    {
+	this.age += dt;
+	if(this.state){
+	    this.state.advanceTime(dt);
+	}
+    },
+
+    isWaiting: function()
+    {
+	return !this.state;
+    },
+
+    moveTo: function(x, y, dur)
+    {
+	this.state = {
+	    obj: this,
+	    beginX: this.x,
+	    beginY: this.y,
+	    endX: x,
+	    endY: y,
+	    beginTime: this.age,
+	    dur: dur,
+
+	    advanceTime: function(dt)
+	    {
+		var t = (this.obj.age - this.beginTime) / this.dur;
+		if(t >= 1.0){
+		    this.obj.x = this.endX;
+		    this.obj.y = this.endY;
+		    this.obj.state = null;
+		}
+		else{
+		    this.obj.x = t * (this.endX - this.beginX) + this.beginX;
+		    this.obj.y = t * (this.endY - this.beginY) + this.beginY;
+		}
+	    }
+	    
+	}
+    }
+};
+
+
+
+
+// ---------------------------------------------------------------------------
 // Player
 // ---------------------------------------------------------------------------
 
 function Player(x, y)
 {
-    this.x = x;
-    this.y = y;
+    this.initGameObject(x, y);
+    this.dirX = 0;
+    this.dirY = 1;
 }
+Player.prototype = GameObject.prototype;
+
+
+// ---------------------------------------------------------------------------
+// Box
+// ---------------------------------------------------------------------------
+
+function Box(x, y)
+{
+    this.initGameObject(x, y);
+}
+Box.prototype = GameObject.prototype;
+
+
 
 
 
@@ -232,7 +351,7 @@ function defineImageSet()
 	imgs.imPlayerStand[dir][0] = imgs.addImage("img/obj_man_" + dirstr + "_s0.png");
 	imgs.imPlayerWalk[dir] = new Array();
 	for(var pat = 0; pat < 8; ++pat){
-	    imgs.imPlayerWalk[dir][0] = imgs.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
+	    imgs.imPlayerWalk[dir][pat] = imgs.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
 	}
     }
     return imgs;
@@ -368,11 +487,34 @@ function PlayerShape(maze, matView)
     this.vertices.push(0.5, 0, PLAYER_Z_DELTA);
     this.vertices.push(0.5, PLAYER_HEIGHT, PLAYER_Z_DELTA);
 
+    // カメラから見えるプレイヤーの方向を計算する。
+    var viewDirX = matView[2];
+    var viewDirY = -matView[10];
+    var viewDirLen = Math.sqrt(viewDirX*viewDirX + viewDirY*viewDirY);
+    viewDirX /= viewDirLen;
+    viewDirY /= viewDirLen;
+
+    var dirY = -viewDirX * maze.player.dirX + -viewDirY * maze.player.dirY;
+    var dirX = -viewDirY * maze.player.dirX + viewDirX * maze.player.dirY;
+    var dir
+	= Math.abs(dirX) > Math.abs(dirY)
+	? (dirX > 0) ? 0 : 2
+        : (dirY > 0) ? 1 : 3;
+
+    var im = null;
+    if(maze.player.isWaiting()){
+	im = images.imPlayerStand[dir][0];
+    }
+    else{
+	var step = Math.floor(maze.player.age / 500 % 1 * images.imPlayerWalk[0].length);
+	im = images.imPlayerWalk[dir][step];
+    }
+
     this.surfaces.push(new Surface(
 	this.transformed,
 	[0, 1, 2, 3],
 	[0,0, 0,1, 1,1, 1,0],
-	images.imPlayerStand[0][0], null));
+	im, null));
 }
 
 function BoxShape(box)
@@ -455,7 +597,7 @@ function transformShape(frontFaces, shape, mat)
 
 
 
-function drawMaze()
+function drawMaze(maze, mazeShape, cameraAngle)
 {
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
@@ -511,48 +653,49 @@ function drawMaze()
 
 
 // ---------------------------------------------------------------------------
+// エディタ
+// ---------------------------------------------------------------------------
 
-function init()
+function Editor(mazeData)
 {
-    timerRotation = null;
-    cameraAngle = Math.PI*0.4;
-    maze = null;
-    mazeShape = null;
-    images = defineImageSet();
+    this.game = new Game(mazeData);
+
+    this.timerRotation = null;
 }
-
-function updateMazeModel(arrayLines)
-{
-    maze = loadMaze(arrayLines);
-    //outputMazeText(maze); return;
-
-    mazeShape = new MazeShape(maze);
-
-    drawMaze();
-}
-
-
-function startRotation()
-{
-    if(timerRotation){
-	return;
-    }
-    var onTime = function()
+Editor.prototype = {
+    updateMazeModel: function(arrayLines)
     {
-	cameraAngle += Math.PI/180*5;
-	drawMaze();
-    };
-    timerRotation = setInterval(onTime, 100);
-}
+	this.game.maze = loadMaze(arrayLines);
+	//outputMazeText(maze); return;
 
-function stopRotation()
-{
-    if(!timerRotation){
-	return;
+	this.game.mazeShape = new MazeShape(this.game.maze);
+
+	drawMaze(this.game.maze, this.game.mazeShape, this.game.cameraAngle);
+    },
+
+    startRotation: function()
+    {
+	if(this.timerRotation){
+	    return;
+	}
+	var editor = this;
+	var onTime = function()
+	{
+	    editor.game.cameraAngle += Math.PI/180*5;
+	    drawMaze(editor.game.maze, editor.game.mazeShape, editor.game.cameraAngle);
+	};
+	this.timerRotation = setInterval(onTime, 100);
+    },
+
+    stopRotation: function()
+    {
+	if(!this.timerRotation){
+	    return;
+	}
+	clearInterval(this.timerRotation);
+	this.timerRotation = null;
     }
-    clearInterval(timerRotation);
-    timerRotation = null;
-}
+};
 
 
 
@@ -560,21 +703,171 @@ function stopRotation()
 var dataMazeTest =
 ["...#####.......",
  "...#   #.......",
- ".###   #######.",
- ".#       @   #.",
+ ".### B #######.",
+ ".# @     B   #.",
  ".## ## #   ###.",
- "..# #      #...",
- "..# ####   #...",
  "..#        #...",
+ "..# ####   #...",
+ "..#O      O#...",
  "..##########..."];
 
-function main()
+
+function initEditor(mazeData)
 {
-    init();
-    images.onProgress = drawImageLoadProgressBar;
-    images.onComplete = function(){
-	updateMazeModel(dataMazeTest);
-	startRotation();
-    }
+    editor = new Editor(mazeData);
 }
 
+
+
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+function Game(mazeData)
+{
+    var game = this;
+
+    this.timerFrame = null;
+    this.gameTime = 0;
+    this.requestedDir = null;
+
+    this.cameraAngle = Math.PI*0.4;
+    this.maze = loadMaze(mazeData);
+    this.mazeShape = null;
+
+    images = defineImageSet();
+    images.onProgress = drawImageLoadProgressBar;
+    images.onComplete = function(){ game.startGame();};
+}
+Game.prototype = {
+    startGame: function()
+    {
+	this.mazeShape = new MazeShape(this.maze); //imagesが必要
+	drawMaze(this.maze, this.mazeShape, this.cameraAngle);
+
+	var game = this;
+	window.onkeydown = function(ev) { game.onKeyDown(ev.keyCode);}
+	window.onkeyup = function(ev) { game.onKeyUp(ev.keyCode);}
+    },
+
+
+    startTimer: function()
+    {
+	if(!this.timerFrame){
+	    var game = this;
+	    var dt = 100;
+	    this.timerFrame = setInterval(function(){game.advanceTime(dt);}, dt);
+	}
+    },
+
+    stopTimer: function()
+    {
+	if(this.timerFrame){
+	    clearInterval(this.timerFrame);
+	    this.timerFrame = null;
+	}
+    },
+
+    advanceTime: function(dt)
+    {
+	this.gameTime += dt;
+
+	this.maze.advanceTime(dt);
+
+	this.processToMovePlayer();
+
+	drawMaze(this.maze, this.mazeShape, this.cameraAngle);
+
+	this.updateTimerState();
+    },
+
+    onKeyDown: function(keycode)
+    {
+	//left 37
+	//up 38
+	//right 39
+	//down 40
+	switch(keycode){
+	case 37: this.requestToMovePlayer(-1, 0); break;
+	case 38: this.requestToMovePlayer(0, -1); break;
+	case 39: this.requestToMovePlayer(1, 0); break;
+	case 40: this.requestToMovePlayer(0, 1); break;
+	}
+    },
+
+    onKeyUp: function(keycode)
+    {
+	switch(keycode){
+	case 37:
+	case 38:
+	case 39:
+	case 40:
+	    this.requestedDir = null;
+	    break;
+	}
+    },
+
+    requestToMovePlayer: function(dirX, dirY)
+    {
+	this.requestedDir = {x:dirX, y:dirY};
+	this.processToMovePlayer();
+    },
+
+    processToMovePlayer: function()
+    {
+	if(!this.requestedDir){
+	    return;
+	}
+
+	if(!this.maze.player){
+	    this.requestedDir = null;
+	}
+	else if(this.maze.player.isWaiting()){
+	    this.movePlayer(this.requestedDir.x, this.requestedDir.y);
+	    this.requestedDir = null;
+	}
+    },
+
+    movePlayer: function(dirX, dirY)
+    {
+	if(!this.maze.player || !this.maze.player.isWaiting()){
+	    return;
+	}
+
+	var destX = this.maze.player.x + dirX;
+	var destY = this.maze.player.y + dirY;
+
+	if(!this.maze.cellIsEmpty(destX, destY)){
+	    return;
+	}
+
+	var box = this.maze.findBox(destX, destY);
+
+	if(box && (!this.maze.cellIsEmpty(destX+dirX, destY+dirY) || this.maze.findBox(destX+dirX, destY+dirY))){
+	    return;
+	}
+
+	this.maze.player.moveTo(destX, destY, 500);
+	this.maze.player.dirX = dirX;
+	this.maze.player.dirY = dirY;
+	if(box){
+	    box.moveTo(destX+dirX, destY+dirY, 500);
+	}
+	this.updateTimerState();
+    },
+
+    updateTimerState: function()
+    {
+	if(this.maze.hasMovingObject()){
+	    this.startTimer();
+	}
+	else{
+	    this.stopTimer();
+	}
+    }
+};
+
+function initGame(mazeData)
+{
+    game = new Game(mazeData);
+}

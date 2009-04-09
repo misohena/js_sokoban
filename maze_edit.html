@@ -11,14 +11,14 @@ function updateModel()
   var mazeTextNew = document.getElementById('mazedata').value;
   if(mazeTextNew != mazeText){
     mazeText = mazeTextNew;
-    updateMazeModel(MazeUtil.splitLines(mazeText));
+    editor.updateMazeModel(MazeUtil.splitLines(mazeText));
   }
   setTimeout(updateModel, 500);
 }
 
     </script>
   </head>
-  <body onload="init(); updateModel(); startRotation();">
+  <body onload="initEditor(dataMazeTest); updateModel();">
     <canvas id="canvas" width="480" height="360">canvas要素に対応したブラウザが必要です。</canvas>
     <textarea id="mazedata" cols="40" rows="10">...#####.......
 ...#   #.......
@@ -30,8 +30,8 @@ function updateModel()
 ..#        #...
 ..##########...</textarea>
     <div id="toolbar">
-      <input type="button" value="停止" onclick="stopRotation();">
-      <input type="button" value="回転" onclick="startRotation();">
+      <input type="button" value="停止" onclick="editor.stopRotation();">
+      <input type="button" value="回転" onclick="editor.startRotation();">
       <input type="button" value="データ反映" onclick="updateModel();">
     </div>
 
