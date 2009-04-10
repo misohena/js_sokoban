@@ -1,3 +1,7 @@
+// Title: JavaScript Surface Renderer
+// Author: AKIYAMA Kouhei
+// Since: 2009
+
 /*
  * (u1,v1)=>(x1,y1), (u2,v2)=>(x2,y2), (u3,v3)=>(x3,y3)‚É‚È‚é‚æ‚¤‚È•ÏŠ·s—ñ‚Ì—v‘fa`f‚ğ‹‚ß‚éB
  *
