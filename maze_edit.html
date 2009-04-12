@@ -1,39 +1,62 @@
 <html>
   <head>
-    <title>JS</title>
+    <title>JavaScript Sokoban Editor</title>
     <script type="text/javascript" src="vecmath.js"></script>
     <script type="text/javascript" src="surface.js"></script>
     <script type="text/javascript" src="js_sokoban.js"></script>
     <script type="text/javascript">
+
+function initEditor()
+{
+  var cv = document.getElementById("canvas");
+  editor = new SokobanEditor([""], window, cv);
+}
+
 var mazeText = "";
-function updateModel()
+function updateModelAuto()
 {
   var mazeTextNew = document.getElementById('mazedata').value;
   if(mazeTextNew != mazeText){
-    mazeText = mazeTextNew;
-    editor.updateMazeModel(MazeUtil.splitLines(mazeText));
+    updateModel();
   }
-  setTimeout(updateModel, 500);
+  setTimeout(updateModelAuto, 500);
+}
+
+function updateModel()
+{
+  var mazeTextNew = document.getElementById('mazedata').value;
+  mazeText = mazeTextNew;
+  editor.updateMazeModel(MazeUtil.splitLines(mazeText));
 }
 
     </script>
   </head>
-  <body onload="initEditor(dataMazeTest); updateModel();">
-    <canvas id="canvas" width="480" height="360">canvas要素に対応したブラウザが必要です。</canvas>
-    <textarea id="mazedata" cols="40" rows="10">...#####.......
+  <body onload="initEditor(); updateModelAuto();">
+    <table>
+      <tr>
+        <td>
+          <canvas id="canvas" width="480" height="360">canvas要素に対応したブラウザが必要です。</canvas>
+        </td>
+        <td>
+          <div>[.]空き地  [#]壁  [@]プレイヤー  [O]ゴール  [B]箱</div>
+          <textarea id="mazedata" cols="40" rows="15">...#####.......
 ...#   #.......
-.###   #######.
+.### B #######.
 .#       @   #.
 .## ## #   ###.
 ..# #      #...
-..# ####   #...
+..# #### O #...
 ..#        #...
 ..##########...</textarea>
-    <div id="toolbar">
-      <input type="button" value="停止" onclick="editor.stopRotation();">
-      <input type="button" value="回転" onclick="editor.startRotation();">
-      <input type="button" value="データ反映" onclick="updateModel();">
-    </div>
+          <div id="toolbar">
+            <input type="button" value="停止" onclick="editor.stopRotation();">
+            <input type="button" value="回転" onclick="editor.startRotation();">
+            <input type="button" value="ゲームリセット" onclick="updateModel();">
+            <input type="button" value="ゲーム開始" onclick="editor.startGame();">
+          </div>
+        </td>
+      </tr>
+    </table>
 
 
   </body>
