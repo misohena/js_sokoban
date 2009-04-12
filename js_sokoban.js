@@ -131,7 +131,12 @@ Cell = {
 function Maze(cells, player, boxes)
 {
     this.cells = cells;
-    this.player = new Player(player.x, player.y);
+    if(player){
+	this.player = new Player(player.x, player.y);
+    }
+    else{
+	this.player = null;
+    }
     this.boxes = new Array(boxes.length);
     for(var bi = 0; bi < boxes.length; ++bi){
 	this.boxes[bi] = new Box(boxes[bi].x, boxes[bi].y);
@@ -232,24 +237,43 @@ function loadMaze(strs)
 }
 
 
-function outputMazeText(maze)
+function createMazeText(mazeModel)
+{
+    var str = "";
+
+    for(var y = 0; y < mazeModel.cells.length; ++y){
+	var line = "";
+	for(var x = 0; x < mazeModel.cells[y].length; ++x){
+	    var existsPlayer
+		= (mazeModel.player && mazeModel.player.x == x && mazeModel.player.y == y);
+	    var existsBox
+		= mazeModel.findBox(x, y);
+
+	    if(existsPlayer){
+		line += '@';
+	    }
+	    else if(existsBox){
+		line += 'B';
+	    }
+	    else{
+		switch(mazeModel.cells[y][x]){
+		case Cell.OUTSIDE: line += '.'; break;
+		case Cell.FLOOR: line += ' '; break;
+		case Cell.WALL: line += '#'; break;
+		case Cell.GOAL: line += 'O'; break;
+		}
+	    }
+	}
+	str = str + line + "\n";
+    }
+    return str;
+}
+
+function outputMazeText(mazeModel)
 {
     document.open();
     document.write("<pre>");
-
-    for(var y in maze.cells){
-	var line = "";
-	for(var x in maze.cells[y]){
-	    switch(maze.cells[y][x]){
-	    case Cell.OUTSIDE: line += '.'; break;
-	    case Cell.FLOOR: line += ' '; break;
-	    case Cell.WALL: line += '#'; break;
-	    }
-	}
-	document.writeln(line);
-    }
-    document.writeln("player:(" + maze.player.x + "," + maze.player.y + ")");
-
+    document.write(createMazeText(mazeModel));
     document.write("</pre>");
     document.close();
 }
@@ -491,6 +515,10 @@ function PlayerShape(maze, matView)
     this.transformed = new Array();
     this.surfaces = new Array();
 
+    if(!maze.player){
+	return;
+    }
+
     var cx = maze.player.x + 0.5;
     var cy = maze.player.y + 0.5;
     this.matWorld = new Mat44(
@@ -626,12 +654,21 @@ function drawMaze(canvas, maze, mazeShape, cameraAngle)
     var eyeX = centerX + Math.cos(cameraAngle) * 20;
     var eyeY = centerY + Math.sin(cameraAngle) * 20;
 
-    var widthCells = maze.width;
+    var cameraWidth = 0;
+    var cameraHeight = 0;
+    if(canvas.width / maze.width < canvas.height / maze.height){
+	cameraWidth = maze.width;
+	cameraHeight = cameraWidth * canvas.height / canvas.width;
+    }
+    else{
+	cameraHeight = maze.height;
+	cameraWidth = cameraHeight * canvas.width / canvas.height;
+    }
     var matView = Mat44.newLookAtLH(new Vec3(eyeX,30,-eyeY), new Vec3(centerX,0,-centerY), new Vec3(0,1,0));
 
     var matProj = new Mat44(
-	2/widthCells,0,0,0,
-	0,2/(widthCells*canvas.height/canvas.width),0,0,
+	2/cameraWidth,0,0,0,
+	0,2/cameraHeight,0,0,
 	0,0,1,0,
 	0,0,0,1
     );
@@ -674,21 +711,17 @@ function drawMaze(canvas, maze, mazeShape, cameraAngle)
 // エディタ
 // ---------------------------------------------------------------------------
 
-function Editor(mazeData, keyelem, canvas)
+function SokobanEditor(mazeData, keyelem, canvas)
 {
-    this.game = new Game(mazeData, keyelem, canvas);
+    this.game = new SokobanGame(mazeData, keyelem, canvas);
 
     this.timerRotation = null;
 }
-Editor.prototype = {
+SokobanEditor.prototype = {
     updateMazeModel: function(arrayLines)
     {
-	this.game.maze = loadMaze(arrayLines);
-	//outputMazeText(maze); return;
-
-	this.game.mazeShape = new MazeShape(this.game.maze);
-
-	drawMaze(this.game.canvas, this.game.maze, this.game.mazeShape, this.game.cameraAngle);
+	this.game.stopGame();
+	this.game.setMazeData(arrayLines);
     },
 
     startRotation: function()
@@ -700,7 +733,7 @@ Editor.prototype = {
 	var onTime = function()
 	{
 	    editor.game.cameraAngle += Math.PI/180*5;
-	    drawMaze(this.game.canvas, editor.game.maze, editor.game.mazeShape, editor.game.cameraAngle);
+	    editor.game.redraw();
 	};
 	this.timerRotation = setInterval(onTime, 100);
     },
@@ -712,67 +745,105 @@ Editor.prototype = {
 	}
 	clearInterval(this.timerRotation);
 	this.timerRotation = null;
+    },
+
+    startGame: function()
+    {
+	this.game.startGame();
     }
 };
 
 
 
 
-var dataMazeTest =
-["...#####.......",
- "...#   #.......",
- ".### B #######.",
- ".# @     B   #.",
- ".## ## #   ###.",
- "..#        #...",
- "..# ####   #...",
- "..#O      O#...",
- "..##########..."];
-
-
-function initEditor(mazeData)
-{
-    editor = new Editor(mazeData);
-}
-
 
 
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-function Game(mazeData, keyelem, canvas)
+function SokobanGame(mazeData, keyelem, canvas)
 {
     var game = this;
 
     this.canvas = canvas;
     this.keyelem = keyelem;
     this.timerFrame = null;
-    this.gameTime = 0;
-    this.pressedArrowKeyBits = 0;
-    this.pressedArrowKeyLast = 0;
-    this.completed = false;
+
+    if(mazeData){
+	this.maze = loadMaze(mazeData);
+    }
 
     this.cameraAngle = Math.PI*0.4;
-    this.maze = loadMaze(mazeData);
-    this.mazeShape = null;
 
+    this.gameStarting = false;
+    this.gameStarted = false;
+
+    // 画像の読み込みを開始する。
     images = defineImageSet();
     images.onProgress = function(imgs){ drawImageLoadProgressBar(imgs, canvas)};
-    images.onComplete = function(){ game.startGame();};
+    images.onComplete = function(){ game.updateMazeShape();};
 }
-Game.prototype = {
-    startGame: function()
+SokobanGame.prototype = {
+    setMazeData: function(arrayLines)
     {
-	this.mazeShape = new MazeShape(this.maze); //imagesが必要
-	drawMaze(this.canvas, this.maze, this.mazeShape, this.cameraAngle);
+	this.maze = loadMaze(arrayLines);
 
-	var game = this;
-	game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev.keyCode);}
-	game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev.keyCode);}
-	game.keyelem.onblur = function() { game.onBlur();}
+	//outputMazeText(this.maze); return;
+	this.updateMazeShape();
     },
 
+    updateMazeShape: function()
+    {
+	if(this.maze && images && images.isComplete()){
+	    this.mazeShape = new MazeShape(this.maze); //imagesが必要
+	    this.redraw();
+	    if(this.gameStarting){
+		this.startGame();
+	    }
+	}
+    },
+
+    startGame: function()
+    {
+	if(this.gameStarted){
+	    return;
+	}
+
+	this.gameStarting = true;
+	if(!this.maze || !this.mazeShape){
+	    return;
+	}
+	this.gameStarting = false;
+
+	this.gameStarted = true;
+	this.completed = false;
+
+	//this.cameraAngle = Math.PI*0.4;
+	//this.redraw();
+
+	this.startKeyListening();
+    },
+
+    stopGame: function()
+    {
+	if(!this.gameStarted){
+	    return;
+	}
+	this.stopKeyListening();
+	this.stopTimer();
+	this.gameStarted = false;
+    },
+
+    redraw: function()
+    {
+	if(this.canvas && this.maze && this.mazeShape && this.cameraAngle){
+	    drawMaze(this.canvas, this.maze, this.mazeShape, this.cameraAngle);
+	}
+    },
+
+
+    // 時間進行
 
     startTimer: function()
     {
@@ -793,11 +864,9 @@ Game.prototype = {
 
     advanceTime: function(dt)
     {
-	this.gameTime += dt;
-
 	this.maze.advanceTime(dt);
 
-	if(!this.completed && this.maze.player.isWaiting() && this.maze.isAllBoxesOnGoal()){
+	if(!this.completed && this.maze.player && this.maze.player.isWaiting() && this.maze.isAllBoxesOnGoal()){
 	    alert("Complete!!");
 	    this.completed = true;
 	}
@@ -805,9 +874,43 @@ Game.prototype = {
 
 	this.movePlayerByArrowKey();
 
-	drawMaze(this.canvas, this.maze, this.mazeShape, this.cameraAngle);
+	this.redraw();
 
 	this.updateTimerState();
+    },
+
+    updateTimerState: function()
+    {
+	if(this.maze.hasMovingObject()){
+	    this.startTimer();
+	}
+	else{
+	    this.stopTimer();
+	}
+    },
+
+
+    // キー入力
+
+    startKeyListening: function()
+    {
+	this.pressedArrowKeyBits = 0;
+	this.pressedArrowKeyLast = 0;
+
+	var game = this;
+	if(game.keyelem){
+	    game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev.keyCode);}
+	    game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev.keyCode);}
+	    game.keyelem.onblur = function() { game.onBlur();}
+	    game.keyelem.focus();
+	}
+    },
+
+    stopKeyListening: function()
+    {
+	this.keyelem.onkeydown = null;
+	this.keyelem.onkeyup = null;
+	this.keyelem.onkeyblur = null;
     },
 
     onKeyDown: function(keycode)
@@ -917,31 +1020,80 @@ Game.prototype = {
 	    box.moveTo(destX+dirX, destY+dirY, PLAYER_DUR_PER_CELL);
 	}
 	this.updateTimerState();
-    },
-
-    updateTimerState: function()
-    {
-	if(this.maze.hasMovingObject()){
-	    this.startTimer();
-	}
-	else{
-	    this.stopTimer();
-	}
     }
 };
 
-function initGame(mazeData)
+
+function getLastScriptNode()
 {
-    var cv = document.getElementById("canvas");
-    game = new Game(mazeData, window, cv);
+    var n = document;
+    while(n && n.nodeName.toLowerCase() != "script") { n = n.lastChild;}
+    return n;
 }
 
-function initGameOnElement(elem, keyelem, mazeData)
+function createSokobanElement(mazeData, keyelem)
 {
+    var div = document.createElement("div");
+
     var cv = document.createElement("canvas");
     cv.setAttribute("width", 480);
     cv.setAttribute("height", 360);
-    elem.parentNode.replaceChild(cv, elem);
+    //cv.setAttribute("tabindex", 0);
+    div.appendChild(cv);
 
-    game = new Game(mazeData, keyelem, cv);
+    if(!keyelem){
+	var text = document.createElement("textarea");
+	text.setAttribute("cols", "1");
+	text.setAttribute("rows", "1");
+	div.appendChild(text);
+	keyelem = text;
+    }
+
+    var restart = document.createElement("input");
+    restart.setAttribute("type", "button");
+    restart.setAttribute("value", "Restart");
+    div.appendChild(restart);
+
+    var game = new SokobanGame(mazeData, keyelem, cv);
+    div.game = game;
+
+    cv.onclick = function()
+    {
+	keyelem.focus();
+    }
+
+    restart.onclick = function()
+    {
+	game.stopGame();
+	game.setMazeData(mazeData);
+	game.startGame();
+    }
+
+    return div;
+}
+
+function placeSokobanPreview(mazeData)
+{
+    var pre = document.createElement("pre");
+    pre.appendChild(document.createTextNode(createMazeText(loadMaze(mazeData))));
+    pre.style.cssText = "border: 1px solid black; display: inline-block;";
+
+    getLastScriptNode().parentNode.appendChild(pre);
+
+    pre.onclick = function()
+    {
+	var gameElem = createSokobanElement(mazeData, null);
+
+	pre.parentNode.replaceChild(gameElem, pre);
+
+	gameElem.game.startGame();
+    }
+}
+
+function placeSokobanElement(mazeData)
+{
+    var gameElem = createSokobanElement(mazeData, window);
+    var parent = getLastScriptNode().parentNode;
+    parent.appendChild(gameElem);
+    gameElem.game.startGame();
 }
