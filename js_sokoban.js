@@ -1,6 +1,6 @@
 // Title: JavaScript Puzzle Game Warehouse keeper
 // Author: AKIYAMA Kouhei
-// Since: 2009
+// Since: 2009-03
 
 
 // ---------------------------------------------------------------------------
@@ -14,6 +14,7 @@ function ImageSet()
 {
     this.imageCountTotal = 0;
     this.imageCountLoaded = 0;
+    this.listeners = { onprogress : new Array(), oncomplete: new Array()};
 }
 ImageSet.prototype = {
     addImage: function(src)
@@ -25,16 +26,45 @@ ImageSet.prototype = {
 	++this.imageCountTotal;
 	return im;
     },
+    addEventListener: function(eventName, f)
+    {
+	this.removeEventListener(f);
+
+	var con = this.listeners[eventName];
+	if(con){
+	    con.push(f);
+	}
+    },
+    removeEventListener: function(eventName, f)
+    {
+	var con = this.listeners[eventName];
+	if(con){
+	    for(var i = 0; i < con.length; ++i){
+		if(con[i] == f){
+		    con.splice(i, 1);
+		    --i;
+		}
+	    }
+	}
+    },
+    dispatchEvent: function(eventName)
+    {
+	var con = this.listeners[eventName];
+	if(con){
+	    // 最低限dispatch中のリスナーを削除できるよう、末尾から走査する。
+	    // ちょっと問題あり。
+	    for(var i = con.length - 1; i >= 0; --i){
+		con[i](this);
+	    }
+	}
+    },
+
     onLoadImage: function()
     {
 	++this.imageCountLoaded;
-	if(this.onProgress){
-	    this.onProgress(this);
-	}
+	this.dispatchEvent("onprogress");
 	if(this.isComplete()){
-	    if(this.onComplete){
-		this.onComplete(this);
-	    }
+	    this.dispatchEvent("oncomplete");
 	}
     },
     isComplete: function()
@@ -57,6 +87,9 @@ ImageSet.prototype = {
  */
 function drawImageLoadProgressBar(imgs, canvas)
 {
+    if(!canvas || !canvas.getContext){
+	return;
+    }
     var ctx = canvas.getContext("2d");
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -204,7 +237,7 @@ Maze.prototype = {
 	    }
 	}
 	return true;
-    },
+    }
 };
 
 
@@ -237,7 +270,7 @@ function loadMaze(strs)
 }
 
 
-function createMazeText(mazeModel)
+function toMazeString(mazeModel)
 {
     var str = "";
 
@@ -273,7 +306,7 @@ function outputMazeText(mazeModel)
 {
     document.open();
     document.write("<pre>");
-    document.write(createMazeText(mazeModel));
+    document.write(toMazeString(mazeModel));
     document.write("</pre>");
     document.close();
 }
@@ -376,11 +409,12 @@ Box.prototype = GameObject.prototype;
 function defineImageSet()
 {
     // 読み込む画像を定義する。
+    var imgdir = "img";
     var imgs = new ImageSet();
-    imgs.imMazeWall = imgs.addImage("img/brick.png");
-    imgs.imMazeFloor = imgs.addImage("img/oak.png");
-    imgs.imMazeGoal = imgs.addImage("img/goal.png");
-    imgs.imBoxSide = imgs.addImage("img/box_side.png");
+    imgs.imMazeWall = imgs.addImage(imgdir+"/brick.png");
+    imgs.imMazeFloor = imgs.addImage(imgdir+"/oak.png");
+    imgs.imMazeGoal = imgs.addImage(imgdir+"/goal.png");
+    imgs.imBoxSide = imgs.addImage(imgdir+"/box_side.png");
 
     imgs.imPlayerStand = new Array();
     imgs.imPlayerWalk = new Array();
@@ -391,16 +425,16 @@ function defineImageSet()
 	    : (dir == 2) ? "left"
 	    : "back";
 	imgs.imPlayerStand[dir] = new Array();
-	imgs.imPlayerStand[dir][0] = imgs.addImage("img/obj_man_" + dirstr + "_s0.png");
+	imgs.imPlayerStand[dir][0] = imgs.addImage(imgdir+"/obj_man_" + dirstr + "_s0.png");
 	imgs.imPlayerWalk[dir] = new Array();
 	for(var pat = 0; pat < 8; ++pat){
-	    imgs.imPlayerWalk[dir][pat] = imgs.addImage("img/obj_man_" + dirstr + "_w" + pat + ".png");
+	    imgs.imPlayerWalk[dir][pat] = imgs.addImage(imgdir+"/obj_man_" + dirstr + "_w" + pat + ".png");
 	}
     }
     return imgs;
 }
 
-function MazeShape(maze)
+function MazeShape(maze, imgs)
 {
     var WALL_HEIGHT = 1.0;
 
@@ -408,9 +442,9 @@ function MazeShape(maze)
     this.transformed = new Array();
     this.surfaces = new Array();
 
-    var imWall = images.imMazeWall;
-    var imFloor = images.imMazeFloor;
-    var imGoal = images.imMazeGoal;
+    var imWall = imgs.imMazeWall;
+    var imFloor = imgs.imMazeFloor;
+    var imGoal = imgs.imMazeGoal;
 
     var points = {
 	getIndex: function(x, y, z, ver)
@@ -509,7 +543,7 @@ function MazeShape(maze)
     }
 }
 
-function PlayerShape(maze, matView)
+function PlayerShape(maze, matView, imgs)
 {
     this.vertices = new Array();
     this.transformed = new Array();
@@ -550,11 +584,11 @@ function PlayerShape(maze, matView)
 
     var im = null;
     if(maze.player.isWaiting()){
-	im = images.imPlayerStand[dir][0];
+	im = imgs.imPlayerStand[dir][0];
     }
     else{
-	var step = Math.floor(maze.player.age / 500 % 1 * images.imPlayerWalk[0].length);
-	im = images.imPlayerWalk[dir][step];
+	var step = Math.floor(maze.player.age / 500 % 1 * imgs.imPlayerWalk[0].length);
+	im = imgs.imPlayerWalk[dir][step];
     }
 
     this.surfaces.push(new Surface(
@@ -564,11 +598,11 @@ function PlayerShape(maze, matView)
 	im, null));
 }
 
-function BoxShape(box)
+function BoxShape(box, imgs)
 {
     var x = box.x;
     var y = box.y;
-    var imBox = images.imBoxSide;
+    var imBox = imgs.imBoxSide;
 
     this.vertices = new Array();
     this.transformed = new Array();
@@ -646,6 +680,9 @@ function transformShape(frontFaces, shape, mat)
 
 function drawMaze(canvas, maze, mazeShape, cameraAngle)
 {
+    if(!canvas || !canvas.getContext){
+	return;
+    }
     var ctx = canvas.getContext("2d");
 
     // Create Transform Matrix
@@ -684,10 +721,10 @@ function drawMaze(canvas, maze, mazeShape, cameraAngle)
     // Create Transformed Surfaces.
     var frontFaces = new Array();
     transformShape(frontFaces, mazeShape, mat);
-    var playerShape = new PlayerShape(maze, matView);
+    var playerShape = new PlayerShape(maze, matView, sokobanImageSet);
     transformShape(frontFaces, playerShape, mat);
     for(var bi = 0; bi < maze.boxes.length; ++bi){
-	var boxShape = new BoxShape(maze.boxes[bi]);
+	var boxShape = new BoxShape(maze.boxes[bi], sokobanImageSet);
 	transformShape(frontFaces, boxShape, mat)
     }
 
@@ -761,6 +798,7 @@ SokobanEditor.prototype = {
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
+var sokobanImageSet = null;
 
 function SokobanGame(mazeData, keyelem, canvas)
 {
@@ -780,9 +818,20 @@ function SokobanGame(mazeData, keyelem, canvas)
     this.gameStarted = false;
 
     // 画像の読み込みを開始する。
-    images = defineImageSet();
-    images.onProgress = function(imgs){ drawImageLoadProgressBar(imgs, canvas)};
-    images.onComplete = function(){ game.updateMazeShape();};
+    if(!sokobanImageSet){
+	sokobanImageSet = defineImageSet();
+    }
+    if(!sokobanImageSet.isComplete()){
+	sokobanImageSet.addEventListener(
+	    "onprogress",
+	    function(imgs){ drawImageLoadProgressBar(imgs, canvas);});
+	sokobanImageSet.addEventListener(
+	    "oncomplete",
+	    function(){ game.updateMazeShape();});
+    }
+    else{
+	game.updateMazeShape();
+    }
 }
 SokobanGame.prototype = {
     setMazeData: function(arrayLines)
@@ -795,8 +844,8 @@ SokobanGame.prototype = {
 
     updateMazeShape: function()
     {
-	if(this.maze && images && images.isComplete()){
-	    this.mazeShape = new MazeShape(this.maze); //imagesが必要
+	if(this.maze && sokobanImageSet && sokobanImageSet.isComplete()){
+	    this.mazeShape = new MazeShape(this.maze, sokobanImageSet); //imagesが必要
 	    this.redraw();
 	    if(this.gameStarting){
 		this.startGame();
@@ -1049,10 +1098,10 @@ function createSokobanElement(mazeData, keyelem)
 	keyelem = text;
     }
 
-    var restart = document.createElement("input");
-    restart.setAttribute("type", "button");
-    restart.setAttribute("value", "Restart");
-    div.appendChild(restart);
+    var buttonRestart = document.createElement("input");
+    buttonRestart.setAttribute("type", "button");
+    buttonRestart.setAttribute("value", "Restart");
+    div.appendChild(buttonRestart);
 
     var game = new SokobanGame(mazeData, keyelem, cv);
     div.game = game;
@@ -1062,7 +1111,7 @@ function createSokobanElement(mazeData, keyelem)
 	keyelem.focus();
     }
 
-    restart.onclick = function()
+    buttonRestart.onclick = function()
     {
 	game.stopGame();
 	game.setMazeData(mazeData);
@@ -1072,28 +1121,68 @@ function createSokobanElement(mazeData, keyelem)
     return div;
 }
 
-function placeSokobanPreview(mazeData)
+
+
+function SokobanPreview_OnClick(mazeData, pre)
 {
-    var pre = document.createElement("pre");
-    pre.appendChild(document.createTextNode(createMazeText(loadMaze(mazeData))));
-    pre.style.cssText = "border: 1px solid black; display: inline-block;";
+    var gameElem = createSokobanElement(mazeData, null);
+
+    var buttonClose = document.createElement("input");
+    buttonClose.setAttribute("type", "button");
+    buttonClose.setAttribute("value", "Close");
+    gameElem.appendChild(buttonClose);
+    buttonClose.onclick = function(){
+	gameElem.game.stopGame();
+	gameElem.parentNode.replaceChild(pre, gameElem);
+    };
+
+    pre.parentNode.replaceChild(gameElem, pre);
+
+    gameElem.game.startGame();
+}
+
+/**
+ * <script type="text/javascript">placeSokobanElement(["###","#@#","###"]);</script>のように使います。
+ */
+function placeSokobanPreview(mazeData, imgPreview)
+{
+    var pre;
+    if(imgPreview){
+	pre = document.createElement("img");
+	pre.src = imgPreview;
+    }
+    else{
+	pre = document.createElement("pre");
+	pre.appendChild(document.createTextNode(toMazeString(loadMaze(mazeData))));
+	pre.style.cssText = "border: 1px solid black; display: inline-block;";
+    }
 
     getLastScriptNode().parentNode.appendChild(pre);
 
-    pre.onclick = function()
-    {
-	var gameElem = createSokobanElement(mazeData, null);
-
-	pre.parentNode.replaceChild(gameElem, pre);
-
-	gameElem.game.startGame();
-    }
+    pre.onclick = function() { SokobanPreview_OnClick(mazeData, pre);}
 }
 
+/**
+ * <script type="text/javascript">placeSokobanElement(["###","#@#","###"]);</script>のように使います。
+ */
 function placeSokobanElement(mazeData)
 {
     var gameElem = createSokobanElement(mazeData, window);
     var parent = getLastScriptNode().parentNode;
     parent.appendChild(gameElem);
     gameElem.game.startGame();
+}
+
+/**
+ * <pre onclick="playSokobanOnPreElement(this);">面データ</pre>のように使います。
+ */
+function playSokobanOnPreElement(elem)
+{
+    var pre = elem;
+    var mazeData = MazeUtil.splitLines(elem.firstChild.nodeValue);
+    if(mazeData[0].length == 0){
+	mazeData.shift();
+    }
+
+    SokobanPreview_OnClick(mazeData, pre);
 }
