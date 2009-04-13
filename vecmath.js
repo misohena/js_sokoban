@@ -1,6 +1,6 @@
 // Title: JavaScript Vector Math Library
 // Author: AKIYAMA Kouhei
-// Since: 2009
+// Since: 2009-03
 
 
 /*
