@@ -135,14 +135,18 @@ MazeUtil = {
     {
 	var lines = new Array();
 	lines.push("");
+	var chprev = null;
 	for(var i = 0; i < str.length; ++i){
 	    var ch = str.charAt(i);
-	    if(ch == '\n' || ch == '\r'){ // \rはIE用
-		lines.push("");
+	    if(ch == '\n' || ch == '\r'){
+		if(!(chprev == '\n' || chprev == '\r')){
+		    lines.push("");
+		}
 	    }
 	    else{
 		lines[lines.length-1] += ch;
 	    }
+	    chprev = ch;
 	}
 	return lines;
     },
@@ -154,11 +158,12 @@ MazeUtil = {
     {
 	var x = 0;
 	var y = 0;
-	while(elem){
+	while(elem && elem.offsetLeft && elem.offsetTop){
 	    x += elem.offsetLeft;
 	    y += elem.offsetTop;
 	    elem = elem.offsetParent;
 	}
+
 	return {x:x, y:y};
     },
 
@@ -175,7 +180,7 @@ MazeUtil = {
 	    return {x:x, y:y};
 	}
 	else if(typeof(ev.pageX) == "number" && typeof(ev.pageY) == "number"){
-	    var pos = getElementAbsPos(elem);
+	    var pos = MazeUtil.getElementAbsPos(elem);
 	    return {x:ev.pageX-pos.x, y:ev.pageY-pos.y};
 	}
 	else{
@@ -959,6 +964,7 @@ SokobanGame.prototype = {
 
 
 	this.movePlayerByArrowKey();
+	this.movePlayerByMouse();
 
 	this.redraw();
 
@@ -978,19 +984,77 @@ SokobanGame.prototype = {
     // マウス入力
     startMouseListening: function()
     {
+	this.pressedMousePos = null;
+
 	var game = this;
 	this.canvas.onmousedown = function(ev){ game.onMouseDown(ev);};
+	this.canvas.onmouseup = function(ev){ game.onMouseUp(ev);};
+	this.canvas.onmouseout = function(ev){ game.onMouseOut(ev);};
+	this.canvas.onclick = function(ev){ game.onClick(ev);};
     },
 
     stopMouseListening: function()
     {
 	this.canvas.onmousedown = null;
+	this.canvas.onmouseup = null;
+	this.canvas.onmouseout = null;
+	this.canvas.onclick = null;
     },
 
     onMouseDown: function(ev)
     {
 	var pos = MazeUtil.getMousePosOnElement(this.canvas, ev);
-	alert(pos.x + "," + pos.y);
+	this.setPressedMousePos(pos);
+    },
+
+    onMouseUp: function(ev)
+    {
+	this.resetPressedMousePos();
+    },
+
+    onMouseOut: function(ev)
+    {
+	this.resetPressedMousePos();
+    },
+
+    onClick: function(ev)
+    {
+	if(this.keyelem){
+	    this.keyelem.focus();
+	}
+
+//	var pos = MazeUtil.getMousePosOnElement(this.canvas, ev);
+//	this.setPressedMousePos(pos);
+//	this.resetPressedMousePos();
+    },
+
+    setPressedMousePos: function(pos)
+    {
+	this.pressedMousePos = pos;
+	this.movePlayerByMouse();
+    },
+
+    resetPressedMousePos: function()
+    {
+	this.pressedMousePos = null;
+    },
+
+    movePlayerByMouse: function()
+    {
+	if(!this.pressedMousePos){
+	    return;
+	}
+
+	var dirX
+	    = this.pressedMousePos.x < this.canvas.width/3 ? -1
+	    : this.pressedMousePos.x > this.canvas.width*2/3 ? 1
+	    : 0;
+	var dirY
+	    = this.pressedMousePos.y < this.canvas.height/3 ? -1
+	    : this.pressedMousePos.y > this.canvas.height*2/3 ? 1
+	    : 0;
+
+	this.movePlayerByDir(dirX, dirY);
     },
 
     // キー入力
@@ -998,7 +1062,6 @@ SokobanGame.prototype = {
     startKeyListening: function()
     {
 	this.pressedArrowKeyBits = 0;
-	this.pressedArrowKeyLast = 0;
 
 	var game = this;
 	if(game.keyelem){
@@ -1048,7 +1111,6 @@ SokobanGame.prototype = {
     setArrowKeyBits: function(bits)
     {
 	this.pressedArrowKeyBits |= bits;
-	this.pressedArrowKeyLast = bits;
 	this.movePlayerByArrowKey();
     },
 
@@ -1060,12 +1122,6 @@ SokobanGame.prototype = {
 
     movePlayerByArrowKey: function()
     {
-	if(!this.maze.player){
-	    return; //no player exists.
-	}
-	else if(!this.maze.player.isWaiting()){
-	    return; // player is moving.
-	}
 	var dirX
 	    = ((this.pressedArrowKeyBits & 1) ? 1 : 0)
 	    + ((this.pressedArrowKeyBits & 4) ? -1 : 0);
@@ -1073,6 +1129,18 @@ SokobanGame.prototype = {
 	    = ((this.pressedArrowKeyBits & 2) ? 1 : 0)
 	    + ((this.pressedArrowKeyBits & 8) ? -1 : 0);
 
+	this.movePlayerByDir(dirX, dirY);
+    },
+
+
+    movePlayerByDir: function(dirX, dirY)
+    {
+	if(!this.maze.player){
+	    return; //no player exists.
+	}
+	if(!this.maze.player.isWaiting()){
+	    return; // player is moving.
+	}
 	if(!dirX && !dirY){
 	    return;
 	}
@@ -1164,11 +1232,6 @@ function createSokobanElement(mazeData, keyelem)
 
     var game = new SokobanGame(mazeData, keyelem, cv);
     div.game = game;
-
-    cv.onclick = function()
-    {
-	keyelem.focus();
-    }
 
     buttonRestart.onclick = function()
     {
