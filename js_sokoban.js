@@ -137,7 +137,7 @@ MazeUtil = {
 	lines.push("");
 	for(var i = 0; i < str.length; ++i){
 	    var ch = str.charAt(i);
-	    if(ch == '\n'){
+	    if(ch == '\n' || ch == '\r'){ // \rはIE用
 		lines.push("");
 	    }
 	    else{
@@ -145,8 +145,43 @@ MazeUtil = {
 	    }
 	}
 	return lines;
-    }
+    },
 
+    /**
+     * 要素の絶対座標を求めます。
+     */
+    getElementAbsPos: function(elem)
+    {
+	var x = 0;
+	var y = 0;
+	while(elem){
+	    x += elem.offsetLeft;
+	    y += elem.offsetTop;
+	    elem = elem.offsetParent;
+	}
+	return {x:x, y:y};
+    },
+
+    /**
+     * マウスイベントの指定要素上での座標を求めます。
+     */
+    getMousePosOnElement: function(elem, ev)
+    {
+	if(!ev){ev = event;}
+	if(elem.getBoundingClientRect){
+	    var bcr = elem.getBoundingClientRect();
+	    var x = ev.clientX - bcr.left;
+	    var y = ev.clientY - bcr.top;
+	    return {x:x, y:y};
+	}
+	else if(typeof(ev.pageX) == "number" && typeof(ev.pageY) == "number"){
+	    var pos = getElementAbsPos(elem);
+	    return {x:ev.pageX-pos.x, y:ev.pageY-pos.y};
+	}
+	else{
+	    return {x:0, y:0};
+	}
+    }
 };
 
 
@@ -872,6 +907,7 @@ SokobanGame.prototype = {
 	//this.redraw();
 
 	this.startKeyListening();
+	this.startMouseListening();
     },
 
     stopGame: function()
@@ -879,6 +915,7 @@ SokobanGame.prototype = {
 	if(!this.gameStarted){
 	    return;
 	}
+	this.stopMouseListening();
 	this.stopKeyListening();
 	this.stopTimer();
 	this.gameStarted = false;
@@ -938,6 +975,23 @@ SokobanGame.prototype = {
 	}
     },
 
+    // マウス入力
+    startMouseListening: function()
+    {
+	var game = this;
+	this.canvas.onmousedown = function(ev){ game.onMouseDown(ev);};
+    },
+
+    stopMouseListening: function()
+    {
+	this.canvas.onmousedown = null;
+    },
+
+    onMouseDown: function(ev)
+    {
+	var pos = MazeUtil.getMousePosOnElement(this.canvas, ev);
+	alert(pos.x + "," + pos.y);
+    },
 
     // キー入力
 
@@ -948,8 +1002,8 @@ SokobanGame.prototype = {
 
 	var game = this;
 	if(game.keyelem){
-	    game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev.keyCode);}
-	    game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev.keyCode);}
+	    game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev ? ev.keyCode : event.keyCode);}
+	    game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev ? ev.keyCode : event.keyCode);}
 	    game.keyelem.onblur = function() { game.onBlur();}
 	    game.keyelem.focus();
 	}
@@ -1089,6 +1143,11 @@ function createSokobanElement(mazeData, keyelem)
     cv.setAttribute("height", 360);
     //cv.setAttribute("tabindex", 0);
     div.appendChild(cv);
+
+    if(typeof G_vmlCanvasManager !== "undefined"){ //for IE
+	cv = G_vmlCanvasManager.initElement(cv);
+    }
+
 
     if(!keyelem){
 	var text = document.createElement("textarea");
