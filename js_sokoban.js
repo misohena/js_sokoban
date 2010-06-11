@@ -79,7 +79,7 @@ ImageSet.prototype = {
     {
 	return this.imageCountTotal;
     }
-}
+};
 
 /**
  * ‰æ‘œ‚Ì“Ç‚İ‚İó‹µ‚ğcanvas—v‘f‚Ö•`‰æ‚µ‚Ü‚·B
