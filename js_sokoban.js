@@ -21,7 +21,7 @@ ImageSet.prototype = {
     {
 	var im = new Image();
 	var th = this;
-	im.onload = function(){ th.onLoadImage();}
+	im.onload = function(){ th.onLoadImage();};
 	im.src = src;
 	++this.imageCountTotal;
 	return im;
@@ -407,7 +407,7 @@ GameObject.prototype = {
 		}
 	    }
 	    
-	}
+	};
     }
 };
 
@@ -765,7 +765,7 @@ function drawMaze(canvas, maze, mazeShape, cameraAngle)
     transformShape(frontFaces, playerShape, mat);
     for(var bi = 0; bi < maze.boxes.length; ++bi){
 	var boxShape = new BoxShape(maze.boxes[bi], sokobanImageSet);
-	transformShape(frontFaces, boxShape, mat)
+	transformShape(frontFaces, boxShape, mat);
     }
 
 
@@ -1065,9 +1065,9 @@ SokobanGame.prototype = {
 
 	var game = this;
 	if(game.keyelem){
-	    game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev ? ev.keyCode : event.keyCode);}
-	    game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev ? ev.keyCode : event.keyCode);}
-	    game.keyelem.onblur = function() { game.onBlur();}
+	    game.keyelem.onkeydown = function(ev) { game.onKeyDown(ev ? ev.keyCode : event.keyCode);};
+	    game.keyelem.onkeyup = function(ev) { game.onKeyUp(ev ? ev.keyCode : event.keyCode);};
+	    game.keyelem.onblur = function() { game.onBlur();};
 	    game.keyelem.focus();
 	}
     },
@@ -1238,7 +1238,7 @@ function createSokobanElement(mazeData, keyelem)
 	game.stopGame();
 	game.setMazeData(mazeData);
 	game.startGame();
-    }
+    };
 
     return div;
 }
@@ -1281,7 +1281,7 @@ function placeSokobanPreview(mazeData, imgPreview)
 
     getLastScriptNode().parentNode.appendChild(pre);
 
-    pre.onclick = function() { SokobanPreview_OnClick(mazeData, pre);}
+    pre.onclick = function() { SokobanPreview_OnClick(mazeData, pre);};
 }
 
 /**
