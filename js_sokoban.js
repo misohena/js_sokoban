@@ -2,6 +2,15 @@
 // Author: AKIYAMA Kouhei
 // Since: 2009-03
 
+(function(global){
+if(!global.misohena){ global.misohena = {};}
+if(!global.misohena.js_sokoban){ global.misohena.js_sokoban = {};}
+var mypkg = global.misohena.js_sokoban;
+
+var Vec3 = mypkg.Vec3;
+var Mat44 = mypkg.Mat44;
+var drawSurface = mypkg.drawSurface;
+var Surface = mypkg.Surface;
 
 // ---------------------------------------------------------------------------
 // ImageSet
@@ -110,7 +119,7 @@ function drawImageLoadProgressBar(imgs, canvas)
 // MazeUtil
 // ---------------------------------------------------------------------------
 
-MazeUtil = {
+var MazeUtil = mypkg.MazeUtil = {
     /**
      * 配列中の一番大きい要素を返します。
      */
@@ -194,7 +203,7 @@ MazeUtil = {
 // Maze
 // ---------------------------------------------------------------------------
 
-Cell = {
+var Cell = {
     OUTSIDE: 0,
     FLOOR: 1,
     WALL: 2,
@@ -650,7 +659,7 @@ function BoxShape(box, imgs)
 
     var BOX_HEIGHT = 1.0;
     var MARGIN = 0.1;
-    idx = 0;
+    var idx = 0;
     this.vertices.push(x+MARGIN, BOX_HEIGHT, -y-MARGIN);
     this.vertices.push(x+MARGIN, BOX_HEIGHT, -y-1+MARGIN);
     this.vertices.push(x+1-MARGIN, BOX_HEIGHT, -y-1+MARGIN);
@@ -794,6 +803,7 @@ function SokobanEditor(mazeData, keyelem, canvas)
 
     this.timerRotation = null;
 }
+mypkg.SokobanEditor = SokobanEditor;
 SokobanEditor.prototype = {
     updateMazeModel: function(arrayLines)
     {
@@ -1294,6 +1304,7 @@ function placeSokobanElement(mazeData)
     parent.appendChild(gameElem);
     gameElem.game.startGame();
 }
+mypkg.placeSokobanElement = placeSokobanElement;
 
 /**
  * <pre onclick="playSokobanOnPreElement(this);">面データ</pre>のように使います。
@@ -1308,3 +1319,7 @@ function playSokobanOnPreElement(elem)
 
     SokobanPreview_OnClick(mazeData, pre);
 }
+mypkg.playSokobanOnPreElement = playSokobanOnPreElement;
+
+
+})(this);

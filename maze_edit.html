@@ -10,7 +10,7 @@
 function initEditor()
 {
   var cv = document.getElementById("canvas");
-  editor = new SokobanEditor([""], window, cv);
+  editor = new misohena.js_sokoban.SokobanEditor([""], window, cv);
 }
 
 var mazeText = "";
@@ -27,7 +27,7 @@ function updateModel()
 {
   var mazeTextNew = document.getElementById('mazedata').value;
   mazeText = mazeTextNew;
-  editor.updateMazeModel(MazeUtil.splitLines(mazeText));
+  editor.updateMazeModel(misohena.js_sokoban.MazeUtil.splitLines(mazeText));
 }
 
     </script>

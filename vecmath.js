@@ -2,6 +2,10 @@
 // Author: AKIYAMA Kouhei
 // Since: 2009-03
 
+(function(global){
+if(!global.misohena){ global.misohena = {};}
+if(!global.misohena.js_sokoban){ global.misohena.js_sokoban = {};}
+var mypkg = global.misohena.js_sokoban;
 
 /*
  * VecMathImplì‡Ç≈ÇÕVec3Ç‚Mat44Çíºê⁄égÇ¢Ç‹ÇπÇÒÅB
@@ -252,6 +256,7 @@ function Vec3()
 {
     this.set.apply(this, arguments);
 }
+mypkg.Vec3 = Vec3;
 
 Vec3.prototype = {
     set: function()
@@ -309,6 +314,7 @@ function Mat44()
         this[i] = arguments[i] || 0;
     }
 }
+mypkg.Mat44 = Mat44;
 
 Mat44.prototype = {
     mul: function(lhs, rhs)
@@ -349,3 +355,4 @@ Mat44.newLookAtLH = function(pos, target, up)
 };
 
 
+})(this);

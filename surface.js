@@ -40,6 +40,14 @@
  * e = (x1*(u2*v3 - u3*v2) + x2*(u3*v1 - u1*v3) + x3*(u1*v2 - u2*v1)) / det
  * f = (y1*(u2*v3 - u3*v2) + y2*(u3*v1 - u1*v3) + y3*(u1*v2 - u2*v1)) / det
  */
+
+
+(function(global){
+if(!global.misohena){ global.misohena = {};}
+if(!global.misohena.js_sokoban){ global.misohena.js_sokoban = {};}
+var mypkg = global.misohena.js_sokoban;
+
+
 function drawSurface(ctx, surface)
 {
     var tex = surface.getTexture();
@@ -100,6 +108,7 @@ function drawSurface(ctx, surface)
 	ctx.restore();
     }
 }
+mypkg.drawSurface = drawSurface;
 
 
 
@@ -153,4 +162,6 @@ Surface.prototype = {
 		 && this.texcoord[7] == 0);///@todo âÒì]å`Ç‡çló∂Ç∑ÇÈÅB
     }
 };
+mypkg.Surface = Surface;
 
+})(this);
