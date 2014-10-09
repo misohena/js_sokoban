@@ -242,7 +242,7 @@ VecMathImpl = {
             dst[i] = value;
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Vec3
@@ -294,7 +294,7 @@ Vec3.prototype = {
     {
         return "Vec3(" + this[0] + "," + this[1] + "," + this[2] + ")";
     }
-}
+};
 
 Vec3.dot = VecMathImpl.dotVec3Vec3;
 
@@ -325,27 +325,27 @@ Mat44.prototype = {
 	    + this[12] + "," + this[13] + "," + this[14] + "," + this[15] + ",\n"
 	    + ")";
     }
-}
+};
 
 Mat44.newIdentity = function()
 {
     var m = new Mat44();
     VecMathImpl.setMat44Identity(m);
     return m;
-}
+};
 
 Mat44.newZero = function()
 {
     ///@todo うーん、Mat44が未初期化なら良いのにナァ。
     var m = new Mat44();
     return m;
-}
+};
 
 Mat44.newLookAtLH = function(pos, target, up)
 {
     var m = new Mat44();
     VecMathImpl.setMat44LookAtLH(m, pos, target, up);
     return m;
-}
+};
 
 
