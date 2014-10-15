@@ -1212,14 +1212,17 @@ function getLastScriptNode()
     return n;
 }
 
+var SOKOBAN_ELEMENT_WIDTH = 480;
+var SOKOBAN_ELEMENT_HEIGHT = 360;
+
 function createSokobanElement(mazeData, keyelem)
 {
     var div = document.createElement("div");
 
     var cv = document.createElement("canvas");
-    cv.setAttribute("width", 480);
-    cv.setAttribute("height", 360);
-    //cv.setAttribute("tabindex", 0);
+    cv.setAttribute("width", SOKOBAN_ELEMENT_WIDTH);
+    cv.setAttribute("height", SOKOBAN_ELEMENT_HEIGHT);
+    //cv.setAttribute("tabindex", "0");
     div.appendChild(cv);
 
     if(typeof G_vmlCanvasManager !== "undefined"){ //for IE
@@ -1235,20 +1238,23 @@ function createSokobanElement(mazeData, keyelem)
 	keyelem = text;
     }
 
-    var buttonRestart = document.createElement("input");
-    buttonRestart.setAttribute("type", "button");
-    buttonRestart.setAttribute("value", "Restart");
-    div.appendChild(buttonRestart);
+    // var buttonRestart = document.createElement("input");
+    // buttonRestart.setAttribute("type", "button");
+    // buttonRestart.setAttribute("value", "Restart");
+    // buttonRestart.style.position = "absolute";
+    // buttonRestart.style.left = "0";
+    // buttonRestart.style.top = "0";
+    // buttonRestart.onclick = function()
+    // {
+    //     game.stopGame();
+    //     game.setMazeData(mazeData);
+    //     game.startGame();
+    // };
+    // div.appendChild(buttonRestart);
 
     var game = new SokobanGame(mazeData, keyelem, cv);
     div.game = game;
 
-    buttonRestart.onclick = function()
-    {
-	game.stopGame();
-	game.setMazeData(mazeData);
-	game.startGame();
-    };
 
     return div;
 }
@@ -1301,7 +1307,17 @@ function placeSokobanElement(mazeData)
 {
     var gameElem = createSokobanElement(mazeData, window);
     var parent = getLastScriptNode().parentNode;
-    parent.appendChild(gameElem);
+
+    var screen = mypkg.GameScreen.wrap(gameElem, SOKOBAN_ELEMENT_WIDTH, SOKOBAN_ELEMENT_HEIGHT);
+    parent.appendChild(screen.getElement());
+
+    screen.getControlBar().addButton("left").setText("Restart").
+        setOnClick(function(){
+            gameElem.game.stopGame();
+            gameElem.game.setMazeData(mazeData);
+            gameElem.game.startGame();
+        });
+
     gameElem.game.startGame();
 }
 mypkg.placeSokobanElement = placeSokobanElement;
