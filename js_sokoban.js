@@ -916,7 +916,7 @@ SokobanGame.prototype = {
 	this.gameStarting = false;
 
 	this.gameStarted = true;
-	this.completed = false;
+	this.finished = false;
 
 	//this.cameraAngle = Math.PI*0.4;
 	//this.redraw();
@@ -940,7 +940,23 @@ SokobanGame.prototype = {
     {
 	if(this.canvas && this.maze && this.mazeShape && this.cameraAngle){
 	    drawMaze(this.canvas, this.maze, this.mazeShape, this.cameraAngle);
+
+            if(this.finished){
+                var ctx = this.canvas.getContext("2d");
+                ctx.font = "24px sans-serif";
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.fillText("Finished!", this.canvas.width/2, this.canvas.height/2);
+            }
 	}
+    },
+
+    finishGame: function()
+    {
+        if(this.finished){
+            return;
+        }
+        this.finished = true;
     },
 
 
@@ -967,9 +983,8 @@ SokobanGame.prototype = {
     {
 	this.maze.advanceTime(dt);
 
-	if(!this.completed && this.maze.player && this.maze.player.isWaiting() && this.maze.isAllBoxesOnGoal()){
-	    alert("Complete!!");
-	    this.completed = true;
+	if(!this.finished && this.maze.player && this.maze.player.isWaiting() && this.maze.isAllBoxesOnGoal()){
+            this.finishGame();
 	}
 
 
