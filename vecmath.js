@@ -16,7 +16,7 @@ var mypkg = global.misohena.js_sokoban;
  *
  * オブジェクトの時に数値から文字列への変換が必要になるのが玉に瑕。
  */
-VecMathImpl = {
+var VecMathImpl = {
     // number op(Vec3)
     lengthSqVec3: function(arg)
     {
