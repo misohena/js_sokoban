@@ -1,3 +1,6 @@
+// gamescreen.js
+// Copyright (c) 2014 AKIYAMA Kouhei
+// This software is released under the MIT License.
 
 (function(global){
     if(!global.misohena){global.misohena = {};}
@@ -90,8 +93,8 @@
         {
             document.body.style.overflow = "hidden"; //hide body scrollbar
 
-            var clientWidth = document.documentElement.clientWidth;
-            var clientHeight = document.documentElement.clientHeight;
+            var clientWidth = window.innerWidth || document.documentElement.clientWidth;
+            var clientHeight = window.innerHeight || document.documentElement.clientHeight;
 
             screenArea.style.display = "block";
             screenArea.style.position = "fixed";
@@ -366,6 +369,10 @@
         div.style.opacity = BUTTON_OPACITY_NORMAL;
         div.style.fontSize = px(BUTTON_HEIGHT * 0.5);
         div.style.cursor = "default";
+        div.style.userSelect =
+            div.style.msUserSelect =
+            div.style.MozUserSelect =
+            div.style.webkitUserSelect = "none";
 
         div.addEventListener("mouseenter", function(e){ div.style.opacity = BUTTON_OPACITY_HOVER;});
         div.addEventListener("mouseleave", function(e){ div.style.opacity = BUTTON_OPACITY_NORMAL;});
