@@ -93,8 +93,8 @@
         {
             document.body.style.overflow = "hidden"; //hide body scrollbar
 
-            var clientWidth = window.innerWidth || document.documentElement.clientWidth;
-            var clientHeight = window.innerHeight || document.documentElement.clientHeight;
+            var clientWidth = document.documentElement.clientWidth;
+            var clientHeight = document.documentElement.clientHeight;
 
             screenArea.style.display = "block";
             screenArea.style.position = "fixed";
@@ -170,6 +170,8 @@
 
         function onResize()
         {
+            updateViewportMetaElement();
+
             if(getFullscreenMode()){
                 setStyleFullscreen();
                 setLastScreenState(SCREEN_FULLSCREEN);
@@ -184,7 +186,6 @@
                     setLastScreenState(SCREEN_NORMAL);
                 }
             }
-            updateViewportMetaElement();
         }
 
         // Maximize methods
@@ -316,8 +317,6 @@
 
         /**
          * viewportメタ要素を更新します。
-         * 表示領域の高さに合わせた方が良いときは「height=SEC指定の画面高さ」を、
-         * そうでないときは「width=SEC指定の画面幅」を設定します。
          */
         function updateViewportMetaElement()
         {
